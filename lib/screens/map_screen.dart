@@ -25,6 +25,7 @@ final _posProvider = StreamProvider<Position?>((ref) async* {
 
 class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
+
   @override
   ConsumerState<MapScreen> createState() => _MapScreenState();
 }
@@ -88,7 +89,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               ),
               if (seaMarks)
                 TileLayer(
-                  urlTemplate: 'https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png',
+                  urlTemplate:
+                      'https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png',
                   userAgentPackageName: 'com.kaptanasistani.app',
                 ),
               if (route != null)
@@ -107,14 +109,22 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     point: ship,
                     width: 44,
                     height: 44,
-                    builder: (ctx) => const Icon(Icons.navigation, color: Color(0xFF5CE1E6), size: 36),
+                    builder: (ctx) => const Icon(
+                      Icons.navigation,
+                      color: Color(0xFF5CE1E6),
+                      size: 36,
+                    ),
                   ),
                   if (target != null)
                     Marker(
                       point: target!,
                       width: 36,
                       height: 36,
-                      builder: (ctx) => const Icon(Icons.flag, color: Color(0xFFFF8A00), size: 32),
+                      builder: (ctx) => const Icon(
+                        Icons.flag,
+                        color: Color(0xFFFF8A00),
+                        size: 32,
+                      ),
                     ),
                 ],
               ),
@@ -131,20 +141,32 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                         child: _box(
                           child: const Text(
                             'KAPTAN ASISTANI',
-                            style: TextStyle(fontWeight: FontWeight.w700, letterSpacing: 0.6),
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.6,
+                            ),
                           ),
                         ),
                       ),
                       const SizedBox(width: 6),
-                      _iconBtn(Icons.layers, () => setState(() => seaMarks = !seaMarks)),
-                      _iconBtn(Icons.my_location, () => _map.move(ship, 11)),
+                      _iconBtn(
+                        Icons.layers,
+                        () => setState(() => seaMarks = !seaMarks),
+                      ),
+                      _iconBtn(
+                        Icons.my_location,
+                        () => _map.move(ship, 11),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 6),
                   _box(
                     child: Text(
                       'POS  ${NavMath.formatLatLon(lat, lon)}',
-                      style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                      style: const TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 12,
+                      ),
                     ),
                   ),
                   if (target != null) ...[
@@ -152,7 +174,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     _box(
                       child: Text(
                         'WPT  ${NavMath.formatLatLon(target!.latitude, target!.longitude)}',
-                        style: const TextStyle(fontFamily: 'monospace', fontSize: 12, color: Color(0xFFFF8A00)),
+                        style: const TextStyle(
+                          fontFamily: 'monospace',
+                          fontSize: 12,
+                          color: Color(0xFFFF8A00),
+                        ),
                       ),
                     ),
                   ],
@@ -169,11 +195,20 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('SEYIR PLANI (MOTOR)', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                    const Text(
+                      'SEYIR PLANI (MOTOR)',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        _metric('Mesafe', '${route!.distanceNm.toStringAsFixed(2)} NM'),
+                        _metric(
+                          'Mesafe',
+                          '${route!.distanceNm.toStringAsFixed(2)} NM',
+                        ),
                         _metric('Kerteriz', route!.bearingLabel),
                         _metric('ETA', route!.eta(etaSog)),
                       ],
@@ -198,7 +233,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             child: _box(
               child: Text(
                 'SOG ${sog.toStringAsFixed(1)} kn    COG ${cog != null ? "${cog.toStringAsFixed(0)}°" : "—"}',
-                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 15,
+                ),
               ),
             ),
           ),
@@ -224,8 +262,17 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(k, style: TextStyle(fontSize: 10, color: Colors.white.withOpacity(0.5))),
-          Text(v, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+          Text(
+            k,
+            style: TextStyle(
+              fontSize: 10,
+              color: Colors.white.withOpacity(0.5),
+            ),
+          ),
+          Text(
+            v,
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+          ),
         ],
       ),
     );
@@ -240,7 +287,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(10),
-          child: Padding(padding: const EdgeInsets.all(10), child: Icon(icon, size: 20)),
+          child: Padding(
+            padding: const EdgeInsets.all(10),
+            child: Icon(icon, size: 20),
+          ),
         ),
       ),
     );

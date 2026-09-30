@@ -9,9 +9,6 @@ class SettingsStore {
   Future<double> getTcpaMin() async => (await _p).getDouble('tcpa_min') ?? 15;
   Future<void> setTcpaMin(double v) async => (await _p).setDouble('tcpa_min', v);
 
-  Future<bool> getNight() async => (await _p).getBool('night') ?? true;
-  Future<void> setNight(bool v) async => (await _p).setBool('night', v);
-
   Future<double> getDraftM() async => (await _p).getDouble('draft_m') ?? 8.0;
   Future<void> setDraftM(double v) async => (await _p).setDouble('draft_m', v);
 

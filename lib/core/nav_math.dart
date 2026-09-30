@@ -6,7 +6,8 @@ class NavMath {
     final r2 = lat2 * math.pi / 180;
     final dLon = (lon2 - lon1) * math.pi / 180;
     final y = math.sin(dLon) * math.cos(r2);
-    final x = math.cos(r1) * math.sin(r2) - math.sin(r1) * math.cos(r2) * math.cos(dLon);
+    final x = math.cos(r1) * math.sin(r2) -
+        math.sin(r1) * math.cos(r2) * math.cos(dLon);
     return (math.atan2(y, x) * 180 / math.pi + 360) % 360;
   }
 
@@ -15,8 +16,10 @@ class NavMath {
     final dLat = (lat2 - lat1) * math.pi / 180;
     final dLon = (lon2 - lon1) * math.pi / 180;
     final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
-        math.cos(lat1 * math.pi / 180) * math.cos(lat2 * math.pi / 180) *
-            math.sin(dLon / 2) * math.sin(dLon / 2);
+        math.cos(lat1 * math.pi / 180) *
+            math.cos(lat2 * math.pi / 180) *
+            math.sin(dLon / 2) *
+            math.sin(dLon / 2);
     return r * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
   }
 
@@ -33,6 +36,7 @@ class NavMath {
       final h = isLat ? (v >= 0 ? 'N' : 'S') : (v >= 0 ? 'E' : 'W');
       return "${deg.toString().padLeft(isLat ? 2 : 3, '0')}°${min.toStringAsFixed(3)}'$h";
     }
+
     return '${f(lat, true)}  ${f(lon, false)}';
   }
 

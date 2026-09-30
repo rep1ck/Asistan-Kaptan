@@ -3,6 +3,7 @@ import '../services/settings_store.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
+
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
@@ -31,13 +32,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    if (loading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
     return Scaffold(
       appBar: AppBar(title: const Text('Gemi / Alarm Ayarlari')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          const Text('TICARI GEMI', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF5CE1E6))),
+          const Text(
+            'TICARI GEMI',
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF5CE1E6),
+            ),
+          ),
           const SizedBox(height: 8),
           Text('Sefer hizi (cruise): ${cruise.toStringAsFixed(0)} kn'),
           Slider(
@@ -64,7 +75,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
           ),
           const Divider(height: 32),
-          const Text('CPA / TCPA ESİKLERI', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF5CE1E6))),
+          const Text(
+            'CPA / TCPA ESIKLERI',
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF5CE1E6),
+            ),
+          ),
           const SizedBox(height: 4),
           Text('CPA: ${cpa.toStringAsFixed(2)} NM'),
           Slider(
@@ -91,13 +108,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const Divider(height: 32),
           const ListTile(
             title: Text('Surum'),
-            trailing: Text('1.0.0 MVP'),
+            trailing: Text('1.0.1 MVP'),
           ),
           ListTile(
             title: const Text('Uyari'),
             subtitle: Text(
-              'Yardimci seyir aracidir. Resmi ENC, ECDIS ve koltuk prosedurunun yerine gecmez.',
-              style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
+              'Yardimci seyir aracidir. Resmi ENC / ECDIS yerine gecmez.',
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.5),
+                fontSize: 12,
+              ),
             ),
           ),
         ],

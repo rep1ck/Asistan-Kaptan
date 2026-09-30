@@ -6,7 +6,6 @@ class MarineSnapshot {
   final double? windDir;
   final double? waveM;
   final double? swellM;
-  final double? sstC;
   final double? airC;
   final DateTime at;
 
@@ -15,7 +14,6 @@ class MarineSnapshot {
     this.windDir,
     this.waveM,
     this.swellM,
-    this.sstC,
     this.airC,
     required this.at,
   });

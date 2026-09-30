@@ -45,13 +45,17 @@ jobs:
 
       - run: flutter pub get
 
+      - name: Dart analyze
+        run: dart analyze lib 2>&1 | tee analyze_out.txt ; exit 0
+
       - name: Patch geolocator_android
         run: |
           find "$HOME/.pub-cache" -path "*geolocator_android*/android/build.gradle" 2>/dev/null | while read f; do
             sed -i 's/flutter\.compileSdkVersion/34/g; s/flutter\.minSdkVersion/24/g; s/flutter\.targetSdkVersion/34/g' "$f"
           done
 
-      - run: flutter build apk --release
+      - name: Build APK
+        run: flutter build apk --release
 
       - uses: actions/upload-artifact@v4
         with:
