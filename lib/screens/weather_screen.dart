@@ -10,7 +10,7 @@ final _wxProvider = FutureProvider.autoDispose((ref) async {
   final lat = pos?.latitude ?? LocationService.defaultLat;
   final lon = pos?.longitude ?? LocationService.defaultLon;
   final snap = await WeatherService().fetch(lat, lon);
-  return (lat: lat, lon: lon, snap: snap);
+  return {'lat': lat, 'lon': lon, 'snap': snap};
 });
 
 class WeatherScreen extends ConsumerWidget {
@@ -30,27 +30,22 @@ class WeatherScreen extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Hata: $e')),
         data: (d) {
-          final s = d.snap;
+          final s = d['snap'] as MarineSnapshot?;
+          final lat = d['lat'] as double;
+          final lon = d['lon'] as double;
           if (s == null) {
             return const Center(child: Text('Veri alinamadi (internet gerekir)'));
           }
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              Text(NavMath.formatLatLon(d.lat, d.lon),
+              Text(NavMath.formatLatLon(lat, lon),
                   style: const TextStyle(fontFamily: 'monospace', color: Colors.white54)),
               const SizedBox(height: 16),
-              _tile(Icons.air, 'Ruzgar', '${s.windKn?.toStringAsFixed(1) ?? "—"} kn'
-                  '${s.windDir != null ? "  ${s.windDir!.toStringAsFixed(0)}° ${NavMath.compass(s.windDir!)}" : ""}'),
+              _tile(Icons.air, 'Ruzgar', '${s.windKn?.toStringAsFixed(1) ?? "—"} kn'),
               _tile(Icons.waves, 'Dalga', '${s.waveM?.toStringAsFixed(1) ?? "—"} m'),
               _tile(Icons.waterfall_chart, 'Swell', '${s.swellM?.toStringAsFixed(1) ?? "—"} m'),
-              _tile(Icons.thermostat, 'Hava sicakligi', '${s.airC?.toStringAsFixed(1) ?? "—"} °C'),
-              const SizedBox(height: 24),
-              Text(
-                'Kaynak: Open-Meteo Marine / Forecast\n'
-                'Ticari seyir icin yardimci bilgidir; resmi meteoroloji / gemi prosedurunun yerine gecmez.',
-                style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.45)),
-              ),
+              _tile(Icons.thermostat, 'Hava', '${s.airC?.toStringAsFixed(1) ?? "—"} °C'),
             ],
           );
         },

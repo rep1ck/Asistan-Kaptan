@@ -9,16 +9,17 @@ import '../services/location_service.dart';
 import '../services/settings_store.dart';
 
 final _locProvider = Provider((_) => LocationService());
+
 final _posProvider = StreamProvider<Position?>((ref) async* {
   final loc = ref.read(_locProvider);
   try {
     if (!await loc.ensurePermission()) {
-      yield loc.fallback;
+      yield null;
       return;
     }
     yield* loc.stream();
   } catch (_) {
-    yield loc.fallback;
+    yield null;
   }
 });
 
@@ -44,8 +45,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     });
   }
 
-  void _tap(TapPosition _, LatLng p) {
-    final pos = ref.read(_posProvider).valueOrNull;
+  void _onTap(TapPosition tapPosition, LatLng p) {
+    final pos = ref.read(_posProvider).asData?.value;
     final from = LatLng(
       pos?.latitude ?? LocationService.defaultLat,
       pos?.longitude ?? LocationService.defaultLon,
@@ -60,7 +61,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   Widget build(BuildContext context) {
     final async = ref.watch(_posProvider);
     final loc = ref.read(_locProvider);
-    final pos = async.valueOrNull;
+    final pos = async.asData?.value;
     final lat = pos?.latitude ?? LocationService.defaultLat;
     final lon = pos?.longitude ?? LocationService.defaultLon;
     final ship = LatLng(lat, lon);
@@ -78,7 +79,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               initialZoom: 9,
               minZoom: 2,
               maxZoom: 18,
-              onTap: _tap,
+              onTap: _onTap,
             ),
             children: [
               TileLayer(
@@ -106,24 +107,19 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     point: ship,
                     width: 44,
                     height: 44,
-                    builder: (_) => Transform.rotate(
-                      angle: ((cog ?? 0) * 3.14159 / 180),
-                      child: const Icon(Icons.navigation, color: Color(0xFF5CE1E6), size: 36),
-                    ),
+                    builder: (ctx) => const Icon(Icons.navigation, color: Color(0xFF5CE1E6), size: 36),
                   ),
                   if (target != null)
                     Marker(
                       point: target!,
                       width: 36,
                       height: 36,
-                      builder: (_) => const Icon(Icons.flag, color: Color(0xFFFF8A00), size: 32),
+                      builder: (ctx) => const Icon(Icons.flag, color: Color(0xFFFF8A00), size: 32),
                     ),
                 ],
               ),
             ],
           ),
-
-          // Top HUD
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(10, 8, 10, 0),
@@ -133,8 +129,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     children: [
                       Expanded(
                         child: _box(
-                          child: const Text('KAPTAN ASISTANI',
-                              style: TextStyle(fontWeight: FontWeight.w700, letterSpacing: 0.6)),
+                          child: const Text(
+                            'KAPTAN ASISTANI',
+                            style: TextStyle(fontWeight: FontWeight.w700, letterSpacing: 0.6),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 6),
@@ -162,8 +160,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               ),
             ),
           ),
-
-          // Route panel
           if (route != null)
             Positioned(
               left: 10,
@@ -185,7 +181,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(
-                        onPressed: () => setState(() { route = null; target = null; }),
+                        onPressed: () => setState(() {
+                          route = null;
+                          target = null;
+                        }),
                         child: const Text('Temizle'),
                       ),
                     ),
@@ -193,8 +192,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 ),
               ),
             ),
-
-          // SOG COG
           Positioned(
             bottom: 16,
             left: 10,
@@ -205,21 +202,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               ),
             ),
           ),
-
-          if (route == null)
-            Positioned(
-              bottom: 70,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: _box(
-                  child: Text(
-                    'Haritaya dokun → seyir plani',
-                    style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 12),
-                  ),
-                ),
-              ),
-            ),
         ],
       ),
     );

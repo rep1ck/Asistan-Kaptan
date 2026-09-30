@@ -1,6 +1,4 @@
 import 'package:geolocator/geolocator.dart';
-import 'package:permission_handler/permission_handler.dart';
-import '../core/nav_math.dart';
 
 class LocationService {
   static const double defaultLat = 41.0082;
@@ -8,8 +6,12 @@ class LocationService {
 
   Future<bool> ensurePermission() async {
     try {
-      final s = await Permission.locationWhenInUse.request();
-      return s.isGranted;
+      var perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.denied) {
+        perm = await Geolocator.requestPermission();
+      }
+      return perm == LocationPermission.always ||
+          perm == LocationPermission.whileInUse;
     } catch (_) {
       return false;
     }
@@ -37,23 +39,13 @@ class LocationService {
     );
   }
 
-  double sogKn(Position p) => NavMath.msToKn(p.speed);
+  double sogKn(Position p) {
+    if (p.speed < 0) return 0;
+    return p.speed * 1.94384;
+  }
 
   double? cogDeg(Position p) {
     if (p.heading < 0) return null;
     return p.heading;
   }
-
-  Position get fallback => Position(
-        latitude: defaultLat,
-        longitude: defaultLon,
-        timestamp: DateTime.now(),
-        accuracy: 0,
-        altitude: 0,
-        altitudeAccuracy: 0,
-        heading: 0,
-        headingAccuracy: 0,
-        speed: 0,
-        speedAccuracy: 0,
-      );
 }
