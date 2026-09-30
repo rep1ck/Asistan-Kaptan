@@ -109,7 +109,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     point: ship,
                     width: 44,
                     height: 44,
-                    builder: (ctx) => const Icon(
+                    child: const Icon(
                       Icons.navigation,
                       color: Color(0xFF5CE1E6),
                       size: 36,
@@ -120,7 +120,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       point: target!,
                       width: 36,
                       height: 36,
-                      builder: (ctx) => const Icon(
+                      child: const Icon(
                         Icons.flag,
                         color: Color(0xFFFF8A00),
                         size: 32,
