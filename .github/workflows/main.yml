@@ -1,0 +1,60 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.24.5"
+          channel: stable
+          cache: true
+
+      - name: Android platform
+        run: flutter create . --platforms=android --project-name=kaptan_asistani --org=com.kaptanasistani
+
+      - name: applicationId + minSdk
+        run: |
+          for f in android/app/build.gradle android/app/build.gradle.kts; do
+            [ -f "$f" ] || continue
+            sed -i 's/applicationId *= *"[^"]*"/applicationId = "com.kaptanasistani.app"/g' "$f"
+            sed -i 's/namespace *= *"[^"]*"/namespace = "com.kaptanasistani.app"/g' "$f"
+            sed -i 's/minSdk *= *.*/minSdk = 24/' "$f" || true
+            sed -i 's/minSdkVersion *.*/minSdk = 24/' "$f" || true
+          done
+
+      - name: Permissions + label
+        run: |
+          M=android/app/src/main/AndroidManifest.xml
+          if [ -f "$M" ]; then
+            grep -q ACCESS_FINE_LOCATION "$M" || sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>\n    <application|' "$M"
+            sed -i 's/android:label="[^"]*"/android:label="Kaptan Asistani"/' "$M" || true
+          fi
+
+      - run: flutter pub get
+
+      - name: Patch geolocator_android
+        run: |
+          find "$HOME/.pub-cache" -path "*geolocator_android*/android/build.gradle" 2>/dev/null | while read f; do
+            sed -i 's/flutter\.compileSdkVersion/34/g; s/flutter\.minSdkVersion/24/g; s/flutter\.targetSdkVersion/34/g' "$f"
+          done
+
+      - run: flutter build apk --release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: KaptanAsistani-APK
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
