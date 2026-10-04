@@ -44,7 +44,7 @@ jobs:
       - run: flutter pub get
 
       - name: Dart analyze
-        run: dart analyze lib --no-fatal-infos --no-fatal-warnings || true
+        run: dart analyze lib || true
 
       - name: Patch geolocator_android
         run: |
