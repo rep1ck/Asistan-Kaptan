@@ -114,6 +114,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       });
       return;
     }
+    final key = await _store.getAisApiKey();
+    _aisKey = key.trim();
     if (_aisKey.isEmpty) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -130,8 +132,30 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     _aisSub = _ais.stream.listen((m) {
       if (mounted) setState(() => vessels = m);
     });
-    await _ais.start(apiKey: _aisKey, lat: ship.latitude, lon: ship.longitude);
+    final ok = await _ais.start(
+      apiKey: _aisKey,
+      lat: ship.latitude,
+      lon: ship.longitude,
+      deltaDeg: 1.0,
+    );
+    if (!mounted) return;
+    if (!ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('AIS connect failed: ${_ais.lastError ?? "unknown"}'),
+          backgroundColor: MaritimeColors.danger,
+        ),
+      );
+      return;
+    }
     setState(() => aisOn = true);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('AIS connected — waiting for ships in range…'),
+        backgroundColor: MaritimeColors.success,
+        duration: Duration(seconds: 3),
+      ),
+    );
   }
 
   void _openLayersMenu(LatLng ship) {
@@ -288,8 +312,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                             color: MaritimeColors.cyan, width: 2),
                       ),
                       child: const Center(
-                        child:
-                            HelmIcon(size: 28, color: MaritimeColors.cyan),
+                        child: HelmIcon(size: 28, color: MaritimeColors.cyan),
                       ),
                     ),
                   ),
@@ -444,8 +467,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     const SizedBox(height: 10),
                     Row(
                       children: [
-                        _metric(
-                            'Dist', '${totalNm.toStringAsFixed(2)} NM'),
+                        _metric('Dist', '${totalNm.toStringAsFixed(2)} NM'),
                         _metric('Legs', '${waypoints.length}'),
                         _metric(
                           'BRG',
@@ -462,14 +484,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                         TextButton(
                           onPressed: _undoLast,
                           child: const Text('Undo',
-                              style:
-                                  TextStyle(color: MaritimeColors.amber)),
+                              style: TextStyle(color: MaritimeColors.amber)),
                         ),
                         TextButton(
                           onPressed: _clearRoute,
                           child: const Text('Clear',
-                              style:
-                                  TextStyle(color: MaritimeColors.coral)),
+                              style: TextStyle(color: MaritimeColors.coral)),
                         ),
                       ],
                     ),
@@ -486,15 +506,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   _sogCog('SOG', '${sog.toStringAsFixed(1)} kn'),
-                  Container(
-                      width: 1, height: 24, color: MaritimeColors.border),
-                  _sogCog(
-                      'COG',
-                      cog != null
-                          ? '${cog.toStringAsFixed(0)}°'
-                          : '—'),
-                  Container(
-                      width: 1, height: 24, color: MaritimeColors.border),
+                  Container(width: 1, height: 24, color: MaritimeColors.border),
+                  _sogCog('COG', cog != null ? '${cog.toStringAsFixed(0)}°' : '—'),
+                  Container(width: 1, height: 24, color: MaritimeColors.border),
                   _sogCog('HDG', NavMath.compass(cog ?? 0)),
                 ],
               ),
