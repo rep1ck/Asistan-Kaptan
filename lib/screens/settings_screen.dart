@@ -12,6 +12,7 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final store = SettingsStore();
+  final aisCtrl = TextEditingController();
   double cpa = 0.5;
   double tcpa = 15;
   double draft = 8;
@@ -24,11 +25,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _load();
   }
 
+  @override
+  void dispose() {
+    aisCtrl.dispose();
+    super.dispose();
+  }
+
   Future<void> _load() async {
     cpa = await store.getCpaNm();
     tcpa = await store.getTcpaMin();
     draft = await store.getDraftM();
     cruise = await store.getCruiseKn();
+    aisCtrl.text = await store.getAisApiKey();
     if (mounted) setState(() => loading = false);
   }
 
@@ -36,20 +44,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     if (loading) {
       return const Scaffold(
-        body: Center(child: CircularProgressIndicator(color: MaritimeColors.cyan)),
+        body: Center(
+            child: CircularProgressIndicator(color: MaritimeColors.cyan)),
       );
     }
     return Scaffold(
-      appBar: AppBar(title: const Text('GEMI AYARLARI')),
+      appBar: AppBar(title: const Text('SHIP SETTINGS')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // Gemi ayarları bölümü
-          _sectionHeader('TICARI GEMI', Icons.directions_boat),
+          _sectionHeader('COMMERCIAL SHIP', Icons.directions_boat),
           const SizedBox(height: 12),
           _sliderCard(
             icon: Icons.speed,
-            label: 'Sefer hizi (cruise)',
+            label: 'Cruise speed',
             value: cruise,
             min: 6,
             max: 25,
@@ -64,7 +72,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 12),
           _sliderCard(
             icon: Icons.water,
-            label: 'Taslak (draft)',
+            label: 'Draft',
             value: draft,
             min: 2,
             max: 20,
@@ -77,8 +85,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
           ),
           const Divider(),
-          // CPA / TCPA bölümü
-          _sectionHeader('CPA / TCPA ESIKLERI', Icons.warning_amber),
+          _sectionHeader('CPA / TCPA', Icons.warning_amber),
           const SizedBox(height: 12),
           _sliderCard(
             icon: Icons.social_distance,
@@ -102,7 +109,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             min: 5,
             max: 60,
             divisions: 11,
-            unit: ' dk',
+            unit: ' min',
             format: (v) => v.toStringAsFixed(0),
             onChanged: (v) async {
               setState(() => tcpa = v);
@@ -110,7 +117,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
           ),
           const Divider(),
-          // Sürüm kartı
+          _sectionHeader('AIS (LIVE SHIPS)', Icons.radar),
+          const SizedBox(height: 8),
+          const Text(
+            'Free API key from aisstream.io (GitHub login). '
+            'Then enable AIS in Map → Layers menu.',
+            style: TextStyle(fontSize: 12, color: MaritimeColors.textMuted),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: aisCtrl,
+            obscureText: true,
+            style: const TextStyle(color: MaritimeColors.textPrimary),
+            decoration: InputDecoration(
+              labelText: 'AIS API key',
+              labelStyle: const TextStyle(color: MaritimeColors.textMuted),
+              filled: true,
+              fillColor: MaritimeColors.surfaceDark,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: MaritimeColors.border),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: MaritimeColors.border),
+              ),
+            ),
+            onChanged: (v) => store.setAisApiKey(v),
+          ),
+          const SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -118,75 +153,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
               borderRadius: BorderRadius.circular(14),
               border: Border.all(color: MaritimeColors.border),
             ),
-            child: Row(
+            child: const Row(
               children: [
-                const HelmIcon(size: 32, color: MaritimeColors.cyan),
-                const SizedBox(width: 14),
-                const Expanded(
+                HelmIcon(size: 32, color: MaritimeColors.cyan),
+                SizedBox(width: 14),
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Surum',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: MaritimeColors.textMuted,
-                          letterSpacing: 1.0,
-                        ),
-                      ),
-                      Text(
-                        '1.0.1 MVP',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: MaritimeColors.textPrimary,
-                        ),
-                      ),
+                      Text('Version',
+                          style: TextStyle(
+                              fontSize: 12, color: MaritimeColors.textMuted)),
+                      Text('1.0.3 AIS',
+                          style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: MaritimeColors.textPrimary)),
                     ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: MaritimeColors.cyan.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Text(
-                    'ANDROID',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      color: MaritimeColors.cyan,
-                      letterSpacing: 1.0,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          // Uyarı kartı
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: MaritimeColors.warning.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: MaritimeColors.warning.withOpacity(0.3),
-              ),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.warning_amber_rounded, color: MaritimeColors.warning, size: 20),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Yardimci seyir aracidir. Resmi ENC / ECDIS yerine gecmez.',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: MaritimeColors.textMuted,
-                      height: 1.4,
-                    ),
                   ),
                 ),
               ],
@@ -240,23 +223,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
             children: [
               Icon(icon, color: MaritimeColors.cyan, size: 20),
               const SizedBox(width: 10),
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: MaritimeColors.textPrimary,
-                ),
-              ),
+              Text(label,
+                  style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: MaritimeColors.textPrimary)),
               const Spacer(),
-              Text(
-                '${format(value)}$unit',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: MaritimeColors.cyan,
-                ),
-              ),
+              Text('${format(value)}$unit',
+                  style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: MaritimeColors.cyan)),
             ],
           ),
           Slider(
