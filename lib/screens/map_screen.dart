@@ -125,7 +125,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                         child: HelmIcon(size: 28, color: MaritimeColors.cyan),
                       ),
                     ),
-                    ),
                   ),
                   if (target != null)
                     Marker(
@@ -144,7 +143,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                         child: const Center(
                           child: AnchorIcon(size: 22, color: MaritimeColors.amber),
                         ),
-                      ),
                       ),
                     ),
                 ],
