@@ -18,19 +18,17 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.24.5"
+          flutter-version: "3.27.4"
           channel: stable
           cache: true
 
       - name: Android platform
         run: flutter create . --platforms=android --project-name=kaptan_asistani --org=com.kaptanasistani
 
-      - name: applicationId + minSdk
+      - name: minSdk only
         run: |
           for f in android/app/build.gradle android/app/build.gradle.kts; do
             [ -f "$f" ] || continue
-            sed -i 's/applicationId *= *"[^"]*"/applicationId = "com.kaptanasistani.app"/g' "$f"
-            sed -i 's/namespace *= *"[^"]*"/namespace = "com.kaptanasistani.app"/g' "$f"
             sed -i 's/minSdk *= *.*/minSdk = 24/' "$f" || true
             sed -i 's/minSdkVersion *.*/minSdk = 24/' "$f" || true
           done
@@ -45,9 +43,6 @@ jobs:
 
       - run: flutter pub get
 
-      - name: Dart analyze
-        run: dart analyze lib 2>&1 | tee analyze_out.txt ; exit 0
-
       - name: Patch geolocator_android
         run: |
           find "$HOME/.pub-cache" -path "*geolocator_android*/android/build.gradle" 2>/dev/null | while read f; do
@@ -57,8 +52,15 @@ jobs:
       - name: Build APK
         run: flutter build apk --release
 
+      - name: Rename APK
+        run: |
+          cp build/app/outputs/flutter-apk/app-release.apk \
+             build/app/outputs/flutter-apk/KaptanAsistani-1.0.2.apk
+
       - uses: actions/upload-artifact@v4
         with:
           name: KaptanAsistani-APK
-          path: build/app/outputs/flutter-apk/app-release.apk
+          path: |
+            build/app/outputs/flutter-apk/app-release.apk
+            build/app/outputs/flutter-apk/KaptanAsistani-1.0.2.apk
           if-no-files-found: error

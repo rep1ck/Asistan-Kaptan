@@ -1,15 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'core/maritime_theme.dart';
 import 'screens/home_shell.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.landscapeLeft,
-    DeviceOrientation.landscapeRight,
-  ]);
+  try {
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        systemNavigationBarColor: MaritimeColors.deepOcean,
+        systemNavigationBarIconBrightness: Brightness.light,
+      ),
+    );
+  } catch (_) {}
   runApp(const ProviderScope(child: KaptanApp()));
 }
 
@@ -21,22 +32,7 @@ class KaptanApp extends StatelessWidget {
     return MaterialApp(
       title: 'Kaptan Asistani',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF0B1220),
-        colorScheme: const ColorScheme.dark(
-          primary: Color(0xFF1B9AAA),
-          secondary: Color(0xFF5CE1E6),
-          surface: Color(0xFF121A2A),
-          error: Color(0xFFE63946),
-        ),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF0B1220),
-          elevation: 0,
-          centerTitle: true,
-        ),
-      ),
+      theme: MaritimeTheme.dark,
       home: const HomeShell(),
     );
   }

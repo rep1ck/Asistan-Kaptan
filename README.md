@@ -1,16 +1,18 @@
 # Kaptan Asistani
 
-Ticari gemiler icin Android seyir asistani (MVP 1.0.1)
+Ticari gemiler icin Android seyir asistani (1.0.2)
 
-- Harita: OSM + OpenSeaMap
-- SOG / COG, dokunarak seyir plani (NM, kerteriz, ETA)
+## Ozellikler
+- OSM + OpenSeaMap harita
+- Dokunarak seyir plani (NM, kerteriz, ETA)
+- SOG / COG
 - Deniz havasi (Open-Meteo)
-- CPA/TCPA, draft, cruise ayarlari
-- Sadece Android, ucretsiz
+- CPA / TCPA, draft, sefer hizi ayarlari
 
 ## APK
-
-GitHub Actions → Artifacts → KaptanAsistani-APK
+1. GitHub **Actions** → yesil build
+2. **Artifacts** → `KaptanAsistani-APK` indir
+3. Telefondaki eski uygulamayi sil, yeni APK kur
 
 Yardimci aractir. Resmi ENC/ECDIS yerine gecmez.
 
