@@ -1,4 +1,32 @@
+import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+
+class SavedPlan {
+  final String name;
+  final List<List<double>> waypoints;
+  final DateTime savedAt;
+
+  SavedPlan({
+    required this.name,
+    required this.waypoints,
+    required this.savedAt,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'waypoints': waypoints,
+        'savedAt': savedAt.toIso8601String(),
+      };
+
+  factory SavedPlan.fromJson(Map<String, dynamic> j) => SavedPlan(
+        name: j['name'] as String? ?? 'Plan',
+        waypoints: (j['waypoints'] as List? ?? [])
+            .map((e) => (e as List).map((x) => (x as num).toDouble()).toList())
+            .toList(),
+        savedAt: DateTime.tryParse(j['savedAt'] as String? ?? '') ??
+            DateTime.now(),
+      );
+}
 
 class SettingsStore {
   Future<SharedPreferences> get _p async => SharedPreferences.getInstance();
@@ -19,4 +47,41 @@ class SettingsStore {
       (await _p).getString('ais_api_key') ?? '';
   Future<void> setAisApiKey(String v) async =>
       (await _p).setString('ais_api_key', v.trim());
+
+  Future<List<SavedPlan>> getPlans() async {
+    final raw = (await _p).getString('saved_plans');
+    if (raw == null || raw.isEmpty) return [];
+    try {
+      final list = jsonDecode(raw) as List;
+      return list
+          .map((e) => SavedPlan.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<void> savePlan(SavedPlan plan) async {
+    final plans = await getPlans();
+    plans.removeWhere((p) => p.name == plan.name);
+    plans.insert(0, plan);
+    while (plans.length > 30) {
+      plans.removeLast();
+    }
+    final prefs = await _p;
+    await prefs.setString(
+      'saved_plans',
+      jsonEncode(plans.map((p) => p.toJson()).toList()),
+    );
+  }
+
+  Future<void> deletePlan(String name) async {
+    final plans = await getPlans();
+    plans.removeWhere((p) => p.name == name);
+    final prefs = await _p;
+    await prefs.setString(
+      'saved_plans',
+      jsonEncode(plans.map((p) => p.toJson()).toList()),
+    );
+  }
 }
