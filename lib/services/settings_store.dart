@@ -14,4 +14,9 @@ class SettingsStore {
 
   Future<double> getCruiseKn() async => (await _p).getDouble('cruise_kn') ?? 12.0;
   Future<void> setCruiseKn(double v) async => (await _p).setDouble('cruise_kn', v);
+
+  Future<String> getAisApiKey() async =>
+      (await _p).getString('ais_api_key') ?? '';
+  Future<void> setAisApiKey(String v) async =>
+      (await _p).setString('ais_api_key', v.trim());
 }

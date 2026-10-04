@@ -1,7 +1,7 @@
 name: kaptan_asistani
 description: Kaptan Asistani - Denizcilik Seyir Asistani
 publish_to: "none"
-version: 1.0.2+3
+version: 1.0.3+4
 
 environment:
   sdk: ">=3.2.0 <4.0.0"
@@ -15,6 +15,7 @@ dependencies:
   geolocator: 10.1.0
   http: 1.2.0
   shared_preferences: 2.2.2
+  web_socket_channel: 2.4.0
   cupertino_icons: 1.0.6
 
 dev_dependencies:
