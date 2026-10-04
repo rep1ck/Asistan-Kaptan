@@ -43,6 +43,9 @@ jobs:
 
       - run: flutter pub get
 
+      - name: Dart analyze (show errors)
+        run: dart analyze lib
+
       - name: Patch geolocator_android
         run: |
           find "$HOME/.pub-cache" -path "*geolocator_android*/android/build.gradle" 2>/dev/null | while read f; do
@@ -52,15 +55,8 @@ jobs:
       - name: Build APK
         run: flutter build apk --release
 
-      - name: Rename APK
-        run: |
-          cp build/app/outputs/flutter-apk/app-release.apk \
-             build/app/outputs/flutter-apk/KaptanAsistani-1.0.2.apk
-
       - uses: actions/upload-artifact@v4
         with:
           name: KaptanAsistani-APK
-          path: |
-            build/app/outputs/flutter-apk/app-release.apk
-            build/app/outputs/flutter-apk/KaptanAsistani-1.0.2.apk
+          path: build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
