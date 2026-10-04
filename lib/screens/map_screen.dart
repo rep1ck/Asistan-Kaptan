@@ -42,6 +42,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   bool seaMarks = true;
   bool useOsm = false;
   bool aisOn = false;
+  bool planMode = false;
   double cruiseKn = 12;
   final List<LatLng> waypoints = [];
   Map<int, AisVessel> vessels = {};
@@ -67,6 +68,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   }
 
   void _onTap(TapPosition tapPosition, LatLng p) {
+    if (!planMode) return;
     setState(() => waypoints.add(p));
   }
 
@@ -104,6 +106,121 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final h = nm / sog;
     if (h < 1) return '${(h * 60).round()} min';
     return '${h.floor()}h ${((h - h.floor()) * 60).round()}m';
+  }
+
+  Future<void> _savePlan() async {
+    if (waypoints.isEmpty) return;
+    final ctrl = TextEditingController(
+      text:
+          'Plan ${DateTime.now().hour.toString().padLeft(2, '0')}${DateTime.now().minute.toString().padLeft(2, '0')}',
+    );
+    final name = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: MaritimeColors.surfaceDark,
+        title: const Text('Save passage plan',
+            style: TextStyle(color: MaritimeColors.textPrimary)),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          style: const TextStyle(color: MaritimeColors.textPrimary),
+          decoration: const InputDecoration(
+            labelText: 'Plan name',
+            labelStyle: TextStyle(color: MaritimeColors.textMuted),
+          ),
+          onSubmitted: (v) => Navigator.pop(ctx, v.trim()),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
+            child: const Text('Save',
+                style: TextStyle(color: MaritimeColors.cyan)),
+          ),
+        ],
+      ),
+    );
+    if (name == null || name.isEmpty) return;
+    await _store.savePlan(SavedPlan(
+      name: name,
+      waypoints: waypoints.map((w) => [w.latitude, w.longitude]).toList(),
+      savedAt: DateTime.now(),
+    ));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Saved: $name'),
+        backgroundColor: MaritimeColors.success,
+      ),
+    );
+  }
+
+  Future<void> _loadPlans() async {
+    final plans = await _store.getPlans();
+    if (!mounted) return;
+    if (plans.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No saved plans'),
+          backgroundColor: MaritimeColors.warning,
+        ),
+      );
+      return;
+    }
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: MaritimeColors.surfaceDark,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return ListView(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+          children: [
+            const Text(
+              'SAVED PLANS',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.2,
+                color: MaritimeColors.cyan,
+              ),
+            ),
+            const SizedBox(height: 12),
+            for (final p in plans)
+              ListTile(
+                title: Text(p.name,
+                    style: const TextStyle(color: MaritimeColors.textPrimary)),
+                subtitle: Text(
+                  '${p.waypoints.length} WPT · ${p.savedAt.toLocal().toString().substring(0, 16)}',
+                  style: const TextStyle(
+                      fontSize: 12, color: MaritimeColors.textMuted),
+                ),
+                trailing: IconButton(
+                  icon: const Icon(Icons.delete_outline,
+                      color: MaritimeColors.coral),
+                  onPressed: () async {
+                    await _store.deletePlan(p.name);
+                    if (ctx.mounted) Navigator.pop(ctx);
+                    _loadPlans();
+                  },
+                ),
+                onTap: () {
+                  setState(() {
+                    waypoints
+                      ..clear()
+                      ..addAll(p.waypoints.map((e) => LatLng(e[0], e[1])));
+                    planMode = true;
+                  });
+                  Navigator.pop(ctx);
+                },
+              ),
+          ],
+        );
+      },
+    );
   }
 
   Future<void> _toggleAis(LatLng ship) async {
@@ -151,13 +268,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       return;
     }
     setState(() => aisOn = true);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('AIS connected — waiting for ships in range…'),
-        backgroundColor: MaritimeColors.success,
-        duration: Duration(seconds: 3),
-      ),
-    );
   }
 
   void _openLayersMenu(LatLng ship) {
@@ -187,21 +297,15 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  const Text(
-                    'MAP LAYERS',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.2,
-                      color: MaritimeColors.cyan,
-                    ),
-                  ),
+                  const Text('MAP LAYERS',
+                      style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.2,
+                          color: MaritimeColors.cyan)),
                   const SizedBox(height: 12),
                   SwitchListTile(
                     title: const Text('OpenSeaMap seamarks',
                         style: TextStyle(color: MaritimeColors.textPrimary)),
-                    subtitle: const Text('Lights, buoys, TSS symbols',
-                        style: TextStyle(
-                            fontSize: 12, color: MaritimeColors.textMuted)),
                     value: seaMarks,
                     activeColor: MaritimeColors.cyan,
                     onChanged: (v) {
@@ -212,9 +316,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   SwitchListTile(
                     title: const Text('English place names (ESRI)',
                         style: TextStyle(color: MaritimeColors.textPrimary)),
-                    subtitle: const Text('Off = OpenStreetMap local names',
-                        style: TextStyle(
-                            fontSize: 12, color: MaritimeColors.textMuted)),
                     value: !useOsm,
                     activeColor: MaritimeColors.cyan,
                     onChanged: (v) {
@@ -225,13 +326,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   SwitchListTile(
                     title: const Text('AIS vessels (live)',
                         style: TextStyle(color: MaritimeColors.textPrimary)),
-                    subtitle: Text(
-                      aisOn
-                          ? '${vessels.length} ships in range'
-                          : 'Free key: aisstream.io → Settings',
-                      style: const TextStyle(
-                          fontSize: 12, color: MaritimeColors.textMuted),
-                    ),
                     value: aisOn,
                     activeColor: MaritimeColors.cyan,
                     onChanged: (v) async {
@@ -390,10 +484,50 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                         ),
                       ),
                       const SizedBox(width: 6),
+                      _modeBtn(
+                        planMode,
+                        Icons.route,
+                        planMode ? 'PLAN ON' : 'PLAN',
+                        () {
+                          setState(() => planMode = !planMode);
+                          if (planMode) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                    'Passage plan mode ON — tap map to add WPT'),
+                                duration: Duration(seconds: 2),
+                              ),
+                            );
+                          }
+                        },
+                      ),
+                      _btn(Icons.folder_open, _loadPlans),
                       _btn(Icons.layers, () => _openLayersMenu(ship)),
                       _btn(Icons.my_location, () => _map.move(ship, 11)),
                     ],
                   ),
+                  if (planMode) ...[
+                    const SizedBox(height: 6),
+                    _glass(
+                      child: const Row(
+                        children: [
+                          Icon(Icons.edit_location_alt,
+                              size: 16, color: MaritimeColors.amber),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'PLAN MODE — tap map to place waypoints',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: MaritimeColors.amber,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 6),
                   _glass(
                     child: Text(
@@ -458,13 +592,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     ),
                     const SizedBox(height: 6),
                     const Text(
-                      'Tap map to add waypoints along fairways / TSS. '
-                      'Not automatic channel routing (needs ENC).',
+                      'Tap map only while PLAN MODE is ON.',
                       style: TextStyle(
-                        fontSize: 11,
-                        color: MaritimeColors.textMuted,
-                        height: 1.3,
-                      ),
+                          fontSize: 11, color: MaritimeColors.textMuted),
                     ),
                     const SizedBox(height: 10),
                     Row(
@@ -483,6 +613,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
+                        TextButton(
+                          onPressed: _savePlan,
+                          child: const Text('Save',
+                              style: TextStyle(color: MaritimeColors.cyan)),
+                        ),
                         TextButton(
                           onPressed: _undoLast,
                           child: const Text('Undo',
@@ -507,11 +642,16 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _sogCog('SOG', pos == null ? '—' : '${sog.toStringAsFixed(1)} kn'),
-                  Container(width: 1, height: 24, color: MaritimeColors.border),
-                  _sogCog('COG', cog == null ? '—' : '${cog.toStringAsFixed(0)}°'),
-                  Container(width: 1, height: 24, color: MaritimeColors.border),
-                  _sogCog('CRS', cog == null ? '—' : NavMath.compass(cog)),
+                  _sogCog('SOG',
+                      pos == null ? '—' : '${sog.toStringAsFixed(1)} kn'),
+                  Container(
+                      width: 1, height: 24, color: MaritimeColors.border),
+                  _sogCog('COG',
+                      cog == null ? '—' : '${cog.toStringAsFixed(0)}°'),
+                  Container(
+                      width: 1, height: 24, color: MaritimeColors.border),
+                  _sogCog(
+                      'CRS', cog == null ? '—' : NavMath.compass(cog)),
                 ],
               ),
             ),
@@ -586,6 +726,53 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           child: Padding(
             padding: const EdgeInsets.all(10),
             child: Icon(icon, size: 20, color: MaritimeColors.cyan),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _modeBtn(
+      bool active, IconData icon, String label, VoidCallback onTap) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4),
+      child: Material(
+        color: active
+            ? MaritimeColors.amber.withOpacity(0.25)
+            : MaritimeColors.surfaceDark,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: active ? MaritimeColors.amber : MaritimeColors.border,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon,
+                    size: 18,
+                    color: active
+                        ? MaritimeColors.amber
+                        : MaritimeColors.cyan),
+                const SizedBox(width: 4),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: active
+                        ? MaritimeColors.amber
+                        : MaritimeColors.cyan,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
