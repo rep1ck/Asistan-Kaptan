@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,6 +6,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import '../core/maritime_theme.dart';
 import '../core/nav_math.dart';
+import '../services/ais_service.dart';
 import '../services/location_service.dart';
 import '../services/settings_store.dart';
 import '../widgets/nautical_icons.dart';
@@ -34,10 +36,15 @@ class MapScreen extends ConsumerStatefulWidget {
 class _MapScreenState extends ConsumerState<MapScreen> {
   final _map = MapController();
   final _store = SettingsStore();
+  final _ais = AisService();
   bool seaMarks = true;
   bool useOsm = false;
+  bool aisOn = false;
   double cruiseKn = 12;
   final List<LatLng> waypoints = [];
+  Map<int, AisVessel> vessels = {};
+  StreamSubscription? _aisSub;
+  String _aisKey = '';
 
   @override
   void initState() {
@@ -45,6 +52,16 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     _store.getCruiseKn().then((v) {
       if (mounted) setState(() => cruiseKn = v);
     });
+    _store.getAisApiKey().then((k) {
+      if (mounted) setState(() => _aisKey = k);
+    });
+  }
+
+  @override
+  void dispose() {
+    _aisSub?.cancel();
+    _ais.dispose();
+    super.dispose();
   }
 
   void _onTap(TapPosition tapPosition, LatLng p) {
@@ -85,6 +102,124 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final h = nm / sog;
     if (h < 1) return '${(h * 60).round()} min';
     return '${h.floor()}h ${((h - h.floor()) * 60).round()}m';
+  }
+
+  Future<void> _toggleAis(LatLng ship) async {
+    if (aisOn) {
+      await _ais.stop();
+      await _aisSub?.cancel();
+      setState(() {
+        aisOn = false;
+        vessels = {};
+      });
+      return;
+    }
+    if (_aisKey.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'AIS API key required. Settings → AIS key (free: aisstream.io)',
+          ),
+          backgroundColor: MaritimeColors.warning,
+        ),
+      );
+      return;
+    }
+    await _aisSub?.cancel();
+    _aisSub = _ais.stream.listen((m) {
+      if (mounted) setState(() => vessels = m);
+    });
+    await _ais.start(apiKey: _aisKey, lat: ship.latitude, lon: ship.longitude);
+    setState(() => aisOn = true);
+  }
+
+  void _openLayersMenu(LatLng ship) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: MaritimeColors.surfaceDark,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setSheet) {
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: MaritimeColors.border,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'MAP LAYERS',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.2,
+                      color: MaritimeColors.cyan,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SwitchListTile(
+                    title: const Text('OpenSeaMap seamarks',
+                        style: TextStyle(color: MaritimeColors.textPrimary)),
+                    subtitle: const Text('Lights, buoys, TSS symbols',
+                        style: TextStyle(
+                            fontSize: 12, color: MaritimeColors.textMuted)),
+                    value: seaMarks,
+                    activeColor: MaritimeColors.cyan,
+                    onChanged: (v) {
+                      setState(() => seaMarks = v);
+                      setSheet(() {});
+                    },
+                  ),
+                  SwitchListTile(
+                    title: const Text('English place names (ESRI)',
+                        style: TextStyle(color: MaritimeColors.textPrimary)),
+                    subtitle: const Text('Off = OpenStreetMap local names',
+                        style: TextStyle(
+                            fontSize: 12, color: MaritimeColors.textMuted)),
+                    value: !useOsm,
+                    activeColor: MaritimeColors.cyan,
+                    onChanged: (v) {
+                      setState(() => useOsm = !v);
+                      setSheet(() {});
+                    },
+                  ),
+                  SwitchListTile(
+                    title: const Text('AIS vessels (live)',
+                        style: TextStyle(color: MaritimeColors.textPrimary)),
+                    subtitle: Text(
+                      aisOn
+                          ? '${vessels.length} ships in range'
+                          : 'Free key: aisstream.io → Settings',
+                      style: const TextStyle(
+                          fontSize: 12, color: MaritimeColors.textMuted),
+                    ),
+                    value: aisOn,
+                    activeColor: MaritimeColors.cyan,
+                    onChanged: (v) async {
+                      Navigator.pop(ctx);
+                      await _toggleAis(ship);
+                    },
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
@@ -182,6 +317,22 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                         ),
                       ),
                     ),
+                  if (aisOn)
+                    for (final v in vessels.values)
+                      Marker(
+                        point: LatLng(v.lat, v.lon),
+                        width: 40,
+                        height: 40,
+                        child: Tooltip(
+                          message:
+                              '${v.name}\nSOG ${v.sogKn?.toStringAsFixed(1) ?? "—"} kn',
+                          child: const Icon(
+                            Icons.directions_boat,
+                            color: Color(0xFF4ADE80),
+                            size: 28,
+                          ),
+                        ),
+                      ),
                 ],
               ),
             ],
@@ -214,17 +365,15 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                         ),
                       ),
                       const SizedBox(width: 6),
-                      _btn(Icons.layers, () =>
-                          setState(() => seaMarks = !seaMarks)),
-                      _btn(Icons.translate,
-                          () => setState(() => useOsm = !useOsm)),
+                      _btn(Icons.layers, () => _openLayersMenu(ship)),
                       _btn(Icons.my_location, () => _map.move(ship, 11)),
                     ],
                   ),
                   const SizedBox(height: 6),
                   _glass(
                     child: Text(
-                      'POS  ${NavMath.formatLatLon(lat, lon)}',
+                      'POS  ${NavMath.formatLatLon(lat, lon)}'
+                      '${aisOn ? "   AIS ${vessels.length}" : ""}',
                       style: const TextStyle(
                         fontFamily: 'monospace',
                         fontSize: 12,
