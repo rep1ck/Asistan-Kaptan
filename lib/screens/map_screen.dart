@@ -20,6 +20,8 @@ final _posProvider = StreamProvider<Position?>((ref) async* {
       yield null;
       return;
     }
+    final first = await loc.current();
+    if (first != null) yield first;
     yield* loc.stream();
   } catch (_) {
     yield null;
@@ -505,11 +507,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _sogCog('SOG', '${sog.toStringAsFixed(1)} kn'),
+                  _sogCog('SOG', pos == null ? '—' : '${sog.toStringAsFixed(1)} kn'),
                   Container(width: 1, height: 24, color: MaritimeColors.border),
-                  _sogCog('COG', cog != null ? '${cog.toStringAsFixed(0)}°' : '—'),
+                  _sogCog('COG', cog == null ? '—' : '${cog.toStringAsFixed(0)}°'),
                   Container(width: 1, height: 24, color: MaritimeColors.border),
-                  _sogCog('HDG', NavMath.compass(cog ?? 0)),
+                  _sogCog('CRS', cog == null ? '—' : NavMath.compass(cog)),
                 ],
               ),
             ),
