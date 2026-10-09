@@ -18,6 +18,8 @@ class _HomeShellState extends State<HomeShell> {
 
   @override
   Widget build(BuildContext context) {
+    final night =
+        Theme.of(context).colorScheme.primary == MaritimeColors.nightRed;
     final pages = <Widget>[
       const MapScreen(),
       const WeatherScreen(),
@@ -27,38 +29,52 @@ class _HomeShellState extends State<HomeShell> {
     ];
     return Scaffold(
       body: pages[index],
-      bottomNavigationBar: NavigationBar(
-        backgroundColor: Theme.of(context).navigationBarTheme.backgroundColor,
-        selectedIndex: index,
-        onDestinationSelected: (i) => setState(() => index = i),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.navigation_outlined),
-            selectedIcon: Icon(Icons.navigation, color: MaritimeColors.cyan),
-            label: 'Seyir',
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          gradient:
+              night ? MaritimeGradients.nightHud : MaritimeGradients.hudBar,
+          border: Border(
+            top: BorderSide(
+              color: night
+                  ? MaritimeColors.nightBorder
+                  : MaritimeColors.border.withOpacity(0.8),
+              width: 1,
+            ),
           ),
-          NavigationDestination(
-            icon: Icon(Icons.waves_outlined),
-            selectedIcon: Icon(Icons.waves, color: MaritimeColors.cyan),
-            label: 'Hava',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.place_outlined),
-            selectedIcon: Icon(Icons.place, color: MaritimeColors.cyan),
-            label: 'Liman',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.menu_book_outlined),
-            selectedIcon: Icon(Icons.menu_book, color: MaritimeColors.cyan),
-            label: 'Defter',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.tune_outlined),
-            selectedIcon: Icon(Icons.tune, color: MaritimeColors.cyan),
-            label: 'Ayar',
-          ),
-        ],
+          boxShadow: [
+            BoxShadow(
+              color: (night ? MaritimeColors.nightRed : MaritimeColors.cyan)
+                  .withOpacity(0.08),
+              blurRadius: 20,
+              offset: const Offset(0, -4),
+            ),
+          ],
+        ),
+        child: NavigationBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          selectedIndex: index,
+          onDestinationSelected: (i) => setState(() => index = i),
+          destinations: [
+            _dest(Icons.navigation_outlined, Icons.navigation, 'Seyir', night),
+            _dest(Icons.waves_outlined, Icons.waves, 'Hava', night),
+            _dest(Icons.place_outlined, Icons.place, 'Liman', night),
+            _dest(Icons.menu_book_outlined, Icons.menu_book, 'Defter', night),
+            _dest(Icons.tune_outlined, Icons.tune, 'Ayar', night),
+          ],
+        ),
       ),
+    );
+  }
+
+  NavigationDestination _dest(
+      IconData icon, IconData selected, String label, bool night) {
+    final accent = night ? MaritimeColors.nightRed : MaritimeColors.cyan;
+    return NavigationDestination(
+      icon: Icon(icon,
+          color: night ? MaritimeColors.nightMuted : MaritimeColors.textMuted),
+      selectedIcon: Icon(selected, color: accent),
+      label: label,
     );
   }
 }

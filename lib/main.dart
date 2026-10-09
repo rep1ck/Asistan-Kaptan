@@ -19,8 +19,10 @@ void main() {
       const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: Brightness.light,
-        systemNavigationBarColor: MaritimeColors.deepOcean,
+        statusBarBrightness: Brightness.dark,
+        systemNavigationBarColor: MaritimeColors.abyss,
         systemNavigationBarIconBrightness: Brightness.light,
+        systemNavigationBarDividerColor: MaritimeColors.border,
       ),
     );
   } catch (_) {}
@@ -46,6 +48,16 @@ class _KaptanAppState extends ConsumerState<KaptanApp> {
   @override
   Widget build(BuildContext context) {
     final night = ref.watch(nightModeProvider);
+    if (night) {
+      SystemChrome.setSystemUIOverlayStyle(
+        const SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.light,
+          systemNavigationBarColor: MaritimeColors.nightBg,
+          systemNavigationBarIconBrightness: Brightness.light,
+        ),
+      );
+    }
     return MaterialApp(
       title: 'Kaptan Asistani',
       debugShowCheckedModeBanner: false,
