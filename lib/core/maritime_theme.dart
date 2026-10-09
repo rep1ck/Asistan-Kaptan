@@ -20,6 +20,12 @@ class MaritimeColors {
   static const textMuted = Color(0xFF5A7A92);
   static const border = Color(0xFF1E4060);
   static const borderLight = Color(0xFF2A5275);
+  static const nightBg = Color(0xFF1A0505);
+  static const nightSurface = Color(0xFF2A0A0A);
+  static const nightRed = Color(0xFFFF4444);
+  static const nightDim = Color(0xFFAA3333);
+  static const nightText = Color(0xFFFFCCCC);
+  static const nightMuted = Color(0xFF996666);
 }
 
 class MaritimeGradients {
@@ -33,15 +39,10 @@ class MaritimeGradients {
     end: Alignment.bottomRight,
     colors: [MaritimeColors.surfaceDark, MaritimeColors.oceanBlue],
   );
-  static const accentGradient = LinearGradient(
+  static const nightCard = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [MaritimeColors.cyan, MaritimeColors.teal],
-  );
-  static const headerGradient = LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    colors: [MaritimeColors.midnightSea, MaritimeColors.surfaceDark],
+    colors: [MaritimeColors.nightSurface, MaritimeColors.nightBg],
   );
 }
 
@@ -75,7 +76,7 @@ class MaritimeTheme {
         backgroundColor: MaritimeColors.surfaceDark,
         indicatorColor: MaritimeColors.cyan.withOpacity(0.2),
         labelTextStyle: WidgetStateProperty.all(
-          const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+          const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
         ),
       ),
       sliderTheme: const SliderThemeData(
@@ -83,25 +84,56 @@ class MaritimeTheme {
         inactiveTrackColor: MaritimeColors.surfaceLight,
         thumbColor: MaritimeColors.cyan,
         overlayColor: Color(0x332DD4DF),
-        valueIndicatorColor: MaritimeColors.midnightSea,
       ),
       dividerTheme: const DividerThemeData(
         color: MaritimeColors.border,
         thickness: 1,
         space: 32,
       ),
-      textTheme: const TextTheme(
-        bodyLarge: TextStyle(color: MaritimeColors.textPrimary),
-        bodyMedium: TextStyle(color: MaritimeColors.textSecondary),
-        bodySmall: TextStyle(color: MaritimeColors.textMuted),
-        titleLarge: TextStyle(
-          color: MaritimeColors.textPrimary,
+    );
+  }
+
+  static ThemeData get night {
+    return ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.dark,
+      scaffoldBackgroundColor: MaritimeColors.nightBg,
+      colorScheme: const ColorScheme.dark(
+        primary: MaritimeColors.nightRed,
+        secondary: MaritimeColors.nightDim,
+        surface: MaritimeColors.nightSurface,
+        error: MaritimeColors.nightRed,
+        onPrimary: Colors.black,
+        onSurface: MaritimeColors.nightText,
+      ),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
+        titleTextStyle: TextStyle(
+          color: MaritimeColors.nightText,
+          fontSize: 18,
           fontWeight: FontWeight.w700,
+          letterSpacing: 1.2,
         ),
-        titleMedium: TextStyle(
-          color: MaritimeColors.textPrimary,
-          fontWeight: FontWeight.w600,
+        iconTheme: IconThemeData(color: MaritimeColors.nightRed),
+      ),
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: MaritimeColors.nightSurface,
+        indicatorColor: MaritimeColors.nightRed.withOpacity(0.25),
+        labelTextStyle: WidgetStateProperty.all(
+          const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
         ),
+      ),
+      sliderTheme: const SliderThemeData(
+        activeTrackColor: MaritimeColors.nightRed,
+        inactiveTrackColor: MaritimeColors.nightSurface,
+        thumbColor: MaritimeColors.nightRed,
+      ),
+      dividerTheme: const DividerThemeData(
+        color: Color(0xFF4A1515),
+        thickness: 1,
+        space: 32,
       ),
     );
   }
