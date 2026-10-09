@@ -58,6 +58,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   LatLng? _anchorPos;
   bool _anchorAlarm = false;
   LatLng? _mobPos;
+  bool _rangeRings = true;
+  double _fuelLPerNm = 20;
+  bool _keepAwake = true;
 
   @override
   void initState() {
@@ -82,6 +85,15 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     });
     _store.getAisFilter().then((v) {
       if (mounted) setState(() => _aisFilter = v);
+    });
+    _store.getRangeRings().then((v) {
+      if (mounted) setState(() => _rangeRings = v);
+    });
+    _store.getFuelLPerNm().then((v) {
+      if (mounted) setState(() => _fuelLPerNm = v);
+    });
+    _store.getKeepAwake().then((v) {
+      if (mounted) setState(() => _keepAwake = v);
     });
   }
 
@@ -386,7 +398,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                         fontWeight: FontWeight.w700,
                         letterSpacing: 1.2,
                         color: MaritimeColors.cyan)),
-                const SizedBox(height: 12),
                 SwitchListTile(
                   title: const Text('OpenSeaMap deniz işaretleri',
                       style: TextStyle(color: MaritimeColors.textPrimary)),
@@ -533,17 +544,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: MaritimeColors.border,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
             Text(v.name,
                 style: const TextStyle(
                     fontWeight: FontWeight.w700,
@@ -563,13 +563,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   '${NavMath.distanceNm(ship.latitude, ship.longitude, v.lat, v.lon).toStringAsFixed(2)} NM'),
             ]),
             if (r != null) ...[
-              const SizedBox(height: 12),
-              const Divider(color: MaritimeColors.border),
-              const SizedBox(height: 8),
-              const Text('CPA / TCPA',
-                  style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: MaritimeColors.cyan)),
               const SizedBox(height: 8),
               Row(children: [
                 _metric('CPA', '${r.cpaNm.toStringAsFixed(2)} NM'),
@@ -577,16 +570,14 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     'TCPA',
                     r.tcpaMin < 0
                         ? 'geçti'
-                        : (r.tcpaMin < 60
-                            ? '${r.tcpaMin.toStringAsFixed(0)} dk'
-                            : '${(r.tcpaMin / 60).toStringAsFixed(1)} sa')),
+                        : '${r.tcpaMin.toStringAsFixed(0)} dk'),
                 _metric(
                     'Durum',
                     r.isDangerous(
                             cpaLimitNm: _cpaLimitNm,
                             tcpaLimitMin: _tcpaLimitMin)
                         ? 'TEHLİKE'
-                        : (r.isApproaching ? 'yaklaşıyor' : 'uzaklaşıyor')),
+                        : 'yaklaşıyor'),
               ]),
             ],
           ],
@@ -653,6 +644,20 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     color: MaritimeColors.cyan),
               ]),
             if (cpaPolys.isNotEmpty) PolylineLayer(polylines: cpaPolys),
+            if (_rangeRings)
+              CircleLayer(
+                circles: [
+                  for (final nm in [0.5, 1.0, 2.0, 5.0])
+                    CircleMarker(
+                      point: ship,
+                      radius: nm * 1852,
+                      useRadiusInMeter: true,
+                      color: Colors.transparent,
+                      borderColor: MaritimeColors.cyan.withOpacity(0.35),
+                      borderStrokeWidth: 1,
+                    ),
+                ],
+              ),
             if (_anchorPos != null)
               CircleLayer(circles: [
                 CircleMarker(
@@ -758,13 +763,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 _modeBtn(planMode, Icons.route,
                     planMode ? 'PLAN AÇIK' : 'PLAN', () {
                   setState(() => planMode = !planMode);
-                  if (planMode) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                      content: Text(
-                          'Plan modu AÇIK — haritaya dokunarak WPT ekle'),
-                      duration: Duration(seconds: 2),
-                    ));
-                  }
                 }),
                 _btn(Icons.folder_open, _loadPlans),
                 _btn(Icons.layers, () => _openLayersMenu(ship)),
@@ -778,24 +776,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 if (_mobPos != null) _btn(Icons.clear, _clearMob),
                 _btn(Icons.upload_file, () => _doExportGpx(ship)),
               ]),
-              if (planMode) ...[
-                const SizedBox(height: 6),
-                _glass(
-                  child: const Row(children: [
-                    Icon(Icons.edit_location_alt,
-                        size: 16, color: MaritimeColors.amber),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                          'PLAN MODU — haritaya dokunarak waypoint ekle',
-                          style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: MaritimeColors.amber)),
-                    ),
-                  ]),
-                ),
-              ],
               const SizedBox(height: 6),
               _glass(
                 child: Text(
@@ -824,7 +804,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       child: Text(
                         _anchorAlarm
                             ? 'ÇAPA ALARM — drift limiti aşıldı'
-                            : 'Çapa · ${_anchorRadiusNm.toStringAsFixed(2)} NM · ${NavMath.distanceNm(ship.latitude, ship.longitude, _anchorPos!.latitude, _anchorPos!.longitude).toStringAsFixed(3)} NM',
+                            : 'Çapa · ${_anchorRadiusNm.toStringAsFixed(2)} NM',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
@@ -856,18 +836,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   ]),
                 ),
               ],
-              if (waypoints.isNotEmpty) ...[
-                const SizedBox(height: 4),
-                _glass(
-                  child: Text(
-                    'WPT ${waypoints.length}:  ${NavMath.formatLatLon(waypoints.last.latitude, waypoints.last.longitude)}',
-                    style: const TextStyle(
-                        fontFamily: 'monospace',
-                        fontSize: 12,
-                        color: MaritimeColors.amber),
-                  ),
-                ),
-              ],
             ]),
           ),
         ),
@@ -880,15 +848,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Row(children: [
-                    CompassIcon(size: 18, color: MaritimeColors.cyan),
-                    SizedBox(width: 8),
-                    Text('SEYİR PLANI',
-                        style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 13,
-                            color: MaritimeColors.textPrimary)),
-                  ]),
+                  const Text('SEYİR PLANI',
+                      style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                          color: MaritimeColors.textPrimary)),
                   const SizedBox(height: 10),
                   Row(children: [
                     _metric('Dist', '${totalNm.toStringAsFixed(2)} NM'),
@@ -897,8 +861,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                         'BRG',
                         nextBrg == null
                             ? '—'
-                            : '${nextBrg.toStringAsFixed(0)}° ${NavMath.compass(nextBrg)}'),
+                            : '${nextBrg.toStringAsFixed(0)}°'),
                     _metric('ETA', _eta(etaSog, totalNm)),
+                    _metric('Yakıt',
+                        '${(totalNm * _fuelLPerNm).toStringAsFixed(0)} L'),
                   ]),
                   Row(mainAxisAlignment: MainAxisAlignment.end, children: [
                     TextButton(
@@ -988,7 +954,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           Text(v,
               style: const TextStyle(
                   fontWeight: FontWeight.w700,
-                  fontSize: 13,
+                  fontSize: 12,
                   color: MaritimeColors.textPrimary)),
         ],
       ),
