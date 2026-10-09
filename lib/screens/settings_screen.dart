@@ -17,6 +17,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   double tcpa = 15;
   double draft = 8;
   double cruise = 12;
+  double anchorR = 0.10;
+  double aisRange = 5.0;
+  AisFilterMode aisFilter = AisFilterMode.all;
   bool loading = true;
 
   @override
@@ -36,6 +39,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     tcpa = await store.getTcpaMin();
     draft = await store.getDraftM();
     cruise = await store.getCruiseKn();
+    anchorR = await store.getAnchorRadiusNm();
+    aisRange = await store.getAisRangeNm();
+    aisFilter = await store.getAisFilter();
     aisCtrl.text = await store.getAisApiKey();
     if (mounted) setState(() => loading = false);
   }
@@ -85,6 +91,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
           ),
           const Divider(),
+          _sectionHeader('ÇAPA NÖBETİ', Icons.anchor),
+          const SizedBox(height: 12),
+          _sliderCard(
+            icon: Icons.radar,
+            label: 'Alarm yarıçapı',
+            value: anchorR,
+            min: 0.05,
+            max: 0.50,
+            divisions: 9,
+            unit: ' NM',
+            format: (v) => v.toStringAsFixed(2),
+            onChanged: (v) async {
+              setState(() => anchorR = v);
+              await store.setAnchorRadiusNm(v);
+            },
+          ),
+          const Divider(),
           _sectionHeader('CPA / TCPA UYARI EŞİKLERİ', Icons.warning_amber),
           const SizedBox(height: 8),
           const Text(
@@ -119,6 +142,55 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onChanged: (v) async {
               setState(() => tcpa = v);
               await store.setTcpaMin(v);
+            },
+          ),
+          const Divider(),
+          _sectionHeader('AIS FİLTRE', Icons.filter_alt),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              gradient: MaritimeGradients.cardGradient,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: MaritimeColors.border),
+            ),
+            child: Column(
+              children: [
+                for (final e in [
+                  (AisFilterMode.all, 'Tümü'),
+                  (AisFilterMode.near, 'Yakın (mesafe)'),
+                  (AisFilterMode.danger, 'Sadece tehlikeli'),
+                ])
+                  RadioListTile<AisFilterMode>(
+                    dense: true,
+                    title: Text(e.$2,
+                        style: const TextStyle(
+                            color: MaritimeColors.textPrimary, fontSize: 14)),
+                    value: e.$1,
+                    groupValue: aisFilter,
+                    activeColor: MaritimeColors.cyan,
+                    onChanged: (v) async {
+                      if (v == null) return;
+                      setState(() => aisFilter = v);
+                      await store.setAisFilter(v);
+                    },
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          _sliderCard(
+            icon: Icons.social_distance,
+            label: 'Yakın filtre mesafesi',
+            value: aisRange,
+            min: 1,
+            max: 20,
+            divisions: 19,
+            unit: ' NM',
+            format: (v) => v.toStringAsFixed(0),
+            onChanged: (v) async {
+              setState(() => aisRange = v);
+              await store.setAisRangeNm(v);
             },
           ),
           const Divider(),
@@ -169,9 +241,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       Text('Sürüm',
                           style: TextStyle(
                               fontSize: 12, color: MaritimeColors.textMuted)),
-                      Text('1.1.0 CPA/TCPA',
+                      Text('1.2.0 Anchor · MOB · GPX · CPA line',
                           style: TextStyle(
-                              fontSize: 16,
+                              fontSize: 15,
                               fontWeight: FontWeight.w700,
                               color: MaritimeColors.textPrimary)),
                     ],
