@@ -353,18 +353,23 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       apiKey: _aisKey,
       lat: ship.latitude,
       lon: ship.longitude,
-      deltaDeg: 1.0,
+      deltaDeg: 2.0,
     );
     if (!mounted) return;
     if (!ok) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content:
-            Text('AIS bağlantı hatası: ${_ais.lastError ?? "bilinmiyor"}'),
+        content: Text('AIS: ${_ais.lastError ?? "bağlantı kurulamadı"}'),
         backgroundColor: MaritimeColors.danger,
       ));
       return;
     }
     setState(() => aisOn = true);
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      content: Text(
+          'AIS açık — çevrede gemi yoksa liste boş kalır (normal)'),
+      backgroundColor: MaritimeColors.success,
+      duration: Duration(seconds: 3),
+    ));
   }
 
   void _openLayersMenu(LatLng ship) {
@@ -440,7 +445,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final danger = _feat.isDangerous(v, ship, sog, cog);
     final color = danger ? MaritimeColors.danger : const Color(0xFF4ADE80);
     return ShipTriangleIcon(
-      size: 30,
+      size: 14,
       color: color,
       headingDeg: v.cogDeg,
       filled: true,
@@ -677,10 +682,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             MarkerLayer(markers: [
               Marker(
                 point: ship,
-                width: 40,
-                height: 40,
+                width: 22,
+                height: 22,
                 child: ShipTriangleIcon(
-                  size: 36,
+                  size: 18,
                   color: MaritimeColors.cyan,
                   headingDeg: cog,
                   filled: true,
@@ -689,8 +694,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               for (var i = 0; i < waypoints.length; i++)
                 Marker(
                   point: waypoints[i],
-                  width: 36,
-                  height: 36,
+                  width: 24,
+                  height: 24,
                   child: Container(
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
@@ -703,7 +708,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                           style: const TextStyle(
                               color: MaritimeColors.amber,
                               fontWeight: FontWeight.w700,
-                              fontSize: 12)),
+                              fontSize: 11)),
                     ),
                   ),
                 ),
@@ -711,8 +716,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 for (final v in shownVessels)
                   Marker(
                     point: LatLng(v.lat, v.lon),
-                    width: 44,
-                    height: 44,
+                    width: 20,
+                    height: 20,
                     child: GestureDetector(
                       onTap: () => _showVesselSheet(v, ship, sog, cog),
                       child: _aisMarker(v, ship, sog, cog),
@@ -721,21 +726,21 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               if (_anchorPos != null)
                 Marker(
                   point: _anchorPos!,
-                  width: 36,
-                  height: 36,
+                  width: 24,
+                  height: 24,
                   child: Icon(Icons.anchor,
                       color: _anchorAlarm
                           ? MaritimeColors.danger
                           : MaritimeColors.teal,
-                      size: 28),
+                      size: 18),
                 ),
               if (_mobPos != null)
                 Marker(
                   point: _mobPos!,
-                  width: 40,
-                  height: 40,
+                  width: 26,
+                  height: 26,
                   child: const Icon(Icons.person_pin_circle,
-                      color: MaritimeColors.danger, size: 36),
+                      color: MaritimeColors.danger, size: 20),
                 ),
             ]),
           ],
