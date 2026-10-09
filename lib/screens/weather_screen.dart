@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/maritime_theme.dart';
+import '../core/nav_math.dart';
+import '../core/astro.dart';
 import '../services/location_service.dart';
 import '../services/weather_service.dart';
-import '../core/nav_math.dart';
 import '../widgets/nautical_icons.dart';
 
 final _wxProvider = FutureProvider.autoDispose((ref) async {
@@ -11,8 +12,19 @@ final _wxProvider = FutureProvider.autoDispose((ref) async {
   final pos = await loc.current();
   final lat = pos?.latitude ?? LocationService.defaultLat;
   final lon = pos?.longitude ?? LocationService.defaultLon;
+  final cog = pos != null ? loc.cogDeg(pos) : null;
+  final sog = pos != null ? loc.sogKn(pos) : 0.0;
   final snap = await WeatherService().fetch(lat, lon);
-  return <String, dynamic>{'lat': lat, 'lon': lon, 'snap': snap};
+  final (sr, ss) = Astro.sunTimes(lat, lon, DateTime.now());
+  return <String, dynamic>{
+    'lat': lat,
+    'lon': lon,
+    'snap': snap,
+    'cog': cog,
+    'sog': sog,
+    'sunrise': Astro.fmt(sr),
+    'sunset': Astro.fmt(ss),
+  };
 });
 
 class WeatherScreen extends ConsumerWidget {
@@ -23,7 +35,7 @@ class WeatherScreen extends ConsumerWidget {
     final async = ref.watch(_wxProvider);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('DENIZ HAVASI'),
+        title: const Text('DENİZ HAVASI'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh, color: MaritimeColors.cyan),
@@ -36,21 +48,36 @@ class WeatherScreen extends ConsumerWidget {
           child: CircularProgressIndicator(color: MaritimeColors.cyan),
         ),
         error: (e, _) => Center(
-          child: Text('Hata: $e', style: const TextStyle(color: MaritimeColors.danger)),
+          child: Text('Hata: $e',
+              style: const TextStyle(color: MaritimeColors.danger)),
         ),
         data: (d) {
           final s = d['snap'] as MarineSnapshot?;
           final lat = d['lat'] as double;
           final lon = d['lon'] as double;
+          final cog = d['cog'] as double?;
+          final sunrise = d['sunrise'] as String;
+          final sunset = d['sunset'] as String;
           if (s == null) {
             return const Center(
-              child: Text('Veri alinamadi (internet gerekir)'),
+              child: Text('Veri alınamadı (internet gerekir)'),
             );
+          }
+          final rel = MarineSnapshot.relativeWindDir(s.windDir, cog);
+          final trend = s.pressureTrend;
+          String trendLabel = '—';
+          if (trend != null) {
+            if (trend > 0.5) {
+              trendLabel = '↑ +${trend.toStringAsFixed(1)} hPa';
+            } else if (trend < -0.5) {
+              trendLabel = '↓ ${trend.toStringAsFixed(1)} hPa';
+            } else {
+              trendLabel = '→ stabil';
+            }
           }
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              // Konum kartı
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -66,95 +93,61 @@ class WeatherScreen extends ConsumerWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'MEVCUT KONUM',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 1.5,
-                              color: MaritimeColors.textMuted,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            NavMath.formatLatLon(lat, lon),
-                            style: const TextStyle(
-                              fontFamily: 'monospace',
-                              fontSize: 13,
-                              color: MaritimeColors.textSecondary,
-                            ),
-                          ),
+                          const Text('MEVCUT KONUM',
+                              style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 1.5,
+                                  color: MaritimeColors.textMuted)),
+                          Text(NavMath.formatLatLon(lat, lon),
+                              style: const TextStyle(
+                                  fontFamily: 'monospace',
+                                  fontSize: 13,
+                                  color: MaritimeColors.textSecondary)),
+                          const SizedBox(height: 6),
+                          Text('Doğuş $sunrise  ·  Batış $sunset',
+                              style: const TextStyle(
+                                  fontSize: 12, color: MaritimeColors.amber)),
                         ],
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
-              // Rüzgar kartı
-              _weatherCard(
-                icon: Icons.air,
-                iconColor: MaritimeColors.cyan,
-                title: 'RUZGAR',
-                value: '${s.windKn?.toStringAsFixed(1) ?? "—"} kn',
-                subtitle: s.windDir != null
-                    ? '${s.windDir!.toStringAsFixed(0)}° ${NavMath.compass(s.windDir!)}'
-                    : 'Yon verisi yok',
-              ),
               const SizedBox(height: 12),
-              // Dalga kartı
-              _weatherCard(
-                icon: Icons.waves,
-                iconColor: MaritimeColors.teal,
-                title: 'DALGA',
-                value: '${s.waveM?.toStringAsFixed(1) ?? "—"} m',
-                subtitle: 'Dalga yuksekligi',
-              ),
-              const SizedBox(height: 12),
-              // Swell kartı
-              _weatherCard(
-                icon: Icons.water,
-                iconColor: MaritimeColors.info,
-                title: 'SWELL',
-                value: '${s.swellM?.toStringAsFixed(1) ?? "—"} m',
-                subtitle: 'Deniz ustu dalga',
-              ),
-              const SizedBox(height: 12),
-              // Sıcaklık kartı
-              _weatherCard(
-                icon: Icons.thermostat,
-                iconColor: MaritimeColors.amber,
-                title: 'HAVA SICAKLIGI',
-                value: '${s.airC?.toStringAsFixed(1) ?? "—"} °C',
-                subtitle: 'Hava sicakligi',
-              ),
-              const SizedBox(height: 24),
-              // Uyarı
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: MaritimeColors.warning.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: MaritimeColors.warning.withOpacity(0.3),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.warning_amber_rounded, color: MaritimeColors.warning, size: 20),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        'Kaynak: Open-Meteo\nYardimci bilgidir; resmi meteoroloji yerine gecmez.',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: MaritimeColors.textMuted,
-                          height: 1.4,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+              _card(Icons.air, MaritimeColors.cyan, 'RÜZGAR (TRUE)',
+                  '${s.windKn?.toStringAsFixed(1) ?? "—"} kn',
+                  s.windDir != null
+                      ? '${s.windDir!.toStringAsFixed(0)}° ${NavMath.compass(s.windDir!)}'
+                      : 'Yön yok'),
+              const SizedBox(height: 10),
+              _card(Icons.explore, MaritimeColors.teal, 'RÜZGAR (RELATIVE)',
+                  rel != null ? '${rel.toStringAsFixed(0)}°' : '—',
+                  cog != null
+                      ? 'COG ${cog.toStringAsFixed(0)}° referans'
+                      : 'COG bekleniyor'),
+              const SizedBox(height: 10),
+              _card(Icons.waves, MaritimeColors.teal, 'DALGA',
+                  '${s.waveM?.toStringAsFixed(1) ?? "—"} m', 'Dalga yüksekliği'),
+              const SizedBox(height: 10),
+              _card(Icons.water, MaritimeColors.info, 'SWELL',
+                  '${s.swellM?.toStringAsFixed(1) ?? "—"} m', 'Denizüstü dalga'),
+              const SizedBox(height: 10),
+              _card(Icons.thermostat, MaritimeColors.amber, 'SICAKLIK',
+                  '${s.airC?.toStringAsFixed(1) ?? "—"} °C', 'Hava sıcaklığı'),
+              const SizedBox(height: 10),
+              _card(
+                  Icons.speed,
+                  MaritimeColors.warning,
+                  'BASINÇ',
+                  s.pressureHpa != null
+                      ? '${s.pressureHpa!.toStringAsFixed(0)} hPa'
+                      : '—',
+                  'Trend (3s): $trendLabel'),
+              const SizedBox(height: 20),
+              const Text(
+                'Kaynak: Open-Meteo · Yardımcı bilgidir; resmi meteoroloji yerine geçmez.',
+                style: TextStyle(fontSize: 11, color: MaritimeColors.textMuted),
               ),
             ],
           );
@@ -163,13 +156,8 @@ class WeatherScreen extends ConsumerWidget {
     );
   }
 
-  Widget _weatherCard({
-    required IconData icon,
-    required Color iconColor,
-    required String title,
-    required String value,
-    required String subtitle,
-  }) {
+  Widget _card(
+      IconData icon, Color color, String title, String value, String sub) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -182,44 +170,31 @@ class WeatherScreen extends ConsumerWidget {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: iconColor.withOpacity(0.12),
+              color: color.withOpacity(0.12),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, color: iconColor, size: 24),
+            child: Icon(icon, color: color, size: 24),
           ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 1.2,
-                    color: MaritimeColors.textMuted,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: MaritimeColors.textSecondary,
-                  ),
-                ),
+                Text(title,
+                    style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 1.2,
+                        color: MaritimeColors.textMuted)),
+                Text(sub,
+                    style: const TextStyle(
+                        fontSize: 12, color: MaritimeColors.textSecondary)),
               ],
             ),
           ),
-          Text(
-            value,
-            style: TextStyle(
-              fontWeight: FontWeight.w700,
-              fontSize: 20,
-              color: iconColor,
-            ),
-          ),
+          Text(value,
+              style: TextStyle(
+                  fontWeight: FontWeight.w700, fontSize: 18, color: color)),
         ],
       ),
     );
