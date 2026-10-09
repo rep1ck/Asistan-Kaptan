@@ -22,29 +22,38 @@ class AisVessel {
   });
 }
 
-/// Real-time AIS via free aisstream.io WebSocket.
+enum AisConnectionState { idle, connecting, connected, error }
+
+/// Real-time AIS via aisstream.io WebSocket.
 class AisService {
   WebSocketChannel? _ch;
   final _ctrl = StreamController<Map<int, AisVessel>>.broadcast();
   final Map<int, AisVessel> _vessels = {};
+  final Map<int, String> _names = {};
   Timer? _prune;
   String? _lastError;
+  AisConnectionState state = AisConnectionState.idle;
 
   Stream<Map<int, AisVessel>> get stream => _ctrl.stream;
   Map<int, AisVessel> get snapshot => Map.unmodifiable(_vessels);
   String? get lastError => _lastError;
+  bool get isConnected => state == AisConnectionState.connected;
 
   Future<bool> start({
     required String apiKey,
     required double lat,
     required double lon,
-    double deltaDeg = 1.0,
+    /// ~2° ≈ 120 NM — sparse regions (inland / open sea)
+    double deltaDeg = 2.0,
   }) async {
     await stop();
     _lastError = null;
+    state = AisConnectionState.connecting;
+
     final key = apiKey.trim();
     if (key.isEmpty) {
-      _lastError = 'API key empty';
+      _lastError = 'API anahtarı boş — Ayarlar’dan girin';
+      state = AisConnectionState.error;
       return false;
     }
 
@@ -70,9 +79,11 @@ class AisService {
           'PositionReport',
           'StandardClassBPositionReport',
           'ExtendedClassBPositionReport',
+          'ShipStaticData',
         ],
       });
       _ch!.sink.add(sub);
+      state = AisConnectionState.connected;
 
       _ch!.stream.listen(
         (raw) {
@@ -82,35 +93,59 @@ class AisService {
             final data = jsonDecode(text) as Map<String, dynamic>;
             final type = data['MessageType'] as String?;
             if (type == null) return;
-            if (type == 'SubscriptionConfirmation') return;
+
+            if (type == 'SubscriptionConfirmation') {
+              state = AisConnectionState.connected;
+              _lastError = null;
+              return;
+            }
+
+            if (type.toLowerCase().contains('error')) {
+              _lastError =
+                  text.length > 120 ? '${text.substring(0, 120)}…' : text;
+              state = AisConnectionState.error;
+              return;
+            }
 
             final meta = data['MetaData'] as Map<String, dynamic>? ?? {};
             final msgRoot = data['Message'] as Map<String, dynamic>? ?? {};
-            final pr = (msgRoot[type] as Map<String, dynamic>?) ??
+            final body = (msgRoot[type] as Map<String, dynamic>?) ??
                 (msgRoot['PositionReport'] as Map<String, dynamic>?) ??
+                (msgRoot['ShipStaticData'] as Map<String, dynamic>?) ??
                 {};
 
             final mmsi = _asInt(meta['MMSI']) ??
                 _asInt(meta['MMSI_String']) ??
-                _asInt(pr['UserID']);
+                _asInt(body['UserID']);
             if (mmsi == null) return;
+
+            if (type == 'ShipStaticData') {
+              final n = (body['Name'] as String?)?.trim() ??
+                  (meta['ShipName'] as String?)?.trim() ??
+                  '';
+              if (n.isNotEmpty) _names[mmsi] = n;
+              return;
+            }
 
             final vLat = _asDouble(meta['latitude']) ??
                 _asDouble(meta['Latitude']) ??
-                _asDouble(pr['Latitude']);
+                _asDouble(body['Latitude']);
             final vLon = _asDouble(meta['longitude']) ??
                 _asDouble(meta['Longitude']) ??
-                _asDouble(pr['Longitude']);
+                _asDouble(body['Longitude']);
             if (vLat == null || vLon == null) return;
             if (vLat < -90 || vLat > 90 || vLon < -180 || vLon > 180) return;
 
-            final name = (meta['ShipName'] as String?)?.trim() ?? '';
-            final sog = _asDouble(pr['Sog']);
-            final cog = _asDouble(pr['Cog']);
+            final nameMeta = (meta['ShipName'] as String?)?.trim() ?? '';
+            final name = nameMeta.isNotEmpty
+                ? nameMeta
+                : (_names[mmsi] ?? 'MMSI $mmsi');
+            final sog = _asDouble(body['Sog']);
+            final cog = _asDouble(body['Cog']);
 
             _vessels[mmsi] = AisVessel(
               mmsi: mmsi,
-              name: name.isEmpty ? 'MMSI $mmsi' : name,
+              name: name,
               lat: vLat,
               lon: vLon,
               sogKn: sog != null && sog >= 0 && sog < 102.3 ? sog : null,
@@ -121,22 +156,27 @@ class AisService {
           } catch (_) {}
         },
         onError: (e) {
-          _lastError = e.toString();
+          _lastError = 'Bağlantı hatası: $e';
+          state = AisConnectionState.error;
         },
         onDone: () {
-          _lastError ??= 'connection closed';
+          if (state != AisConnectionState.error) {
+            _lastError = 'AIS bağlantısı kapandı';
+          }
+          state = AisConnectionState.error;
         },
         cancelOnError: false,
       );
 
-      _prune = Timer.periodic(const Duration(seconds: 30), (_) {
-        final cut = DateTime.now().subtract(const Duration(minutes: 15));
+      _prune = Timer.periodic(const Duration(seconds: 45), (_) {
+        final cut = DateTime.now().subtract(const Duration(minutes: 20));
         _vessels.removeWhere((_, v) => v.updated.isBefore(cut));
         if (!_ctrl.isClosed) _ctrl.add(snapshot);
       });
       return true;
     } catch (e) {
-      _lastError = e.toString();
+      _lastError = 'AIS açılamadı: $e';
+      state = AisConnectionState.error;
       return false;
     }
   }
@@ -179,6 +219,7 @@ class AisService {
     } catch (_) {}
     _ch = null;
     _vessels.clear();
+    state = AisConnectionState.idle;
     if (!_ctrl.isClosed) _ctrl.add({});
   }
 

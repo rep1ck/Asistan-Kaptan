@@ -16,19 +16,24 @@ class HomeShell extends StatefulWidget {
 class _HomeShellState extends State<HomeShell> {
   int index = 0;
 
+  static const _pages = <Widget>[
+    MapScreen(),
+    WeatherScreen(),
+    PortsScreen(),
+    LogbookScreen(),
+    SettingsScreen(),
+  ];
+
   @override
   Widget build(BuildContext context) {
     final night =
         Theme.of(context).colorScheme.primary == MaritimeColors.nightRed;
-    final pages = <Widget>[
-      const MapScreen(),
-      const WeatherScreen(),
-      const PortsScreen(),
-      const LogbookScreen(),
-      const SettingsScreen(),
-    ];
     return Scaffold(
-      body: pages[index],
+      body: IndexedStack(
+        index: index,
+        sizing: StackFit.expand,
+        children: _pages,
+      ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           gradient:
@@ -53,8 +58,12 @@ class _HomeShellState extends State<HomeShell> {
         child: NavigationBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
+          animationDuration: const Duration(milliseconds: 200),
           selectedIndex: index,
-          onDestinationSelected: (i) => setState(() => index = i),
+          onDestinationSelected: (i) {
+            if (i == index) return;
+            setState(() => index = i);
+          },
           destinations: [
             _dest(Icons.navigation_outlined, Icons.navigation, 'Seyir', night),
             _dest(Icons.waves_outlined, Icons.waves, 'Hava', night),

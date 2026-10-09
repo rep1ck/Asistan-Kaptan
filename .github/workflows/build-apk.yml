@@ -1,0 +1,38 @@
+name: Build APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Generate app icons
+        run: |
+          pip install pillow -q
+          python tool/gen_icon.py
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.24.0"
+          channel: stable
+      - name: Materialize Android platform
+        run: |
+          flutter create --org com.kaptanasistani --project-name kaptan_asistani --platforms=android .
+          git checkout HEAD -- lib pubspec.yaml tool 2>/dev/null || true
+          python tool/gen_icon.py
+      - name: Dependencies
+        run: flutter pub get
+      - name: Apply launcher icons
+        run: dart run flutter_launcher_icons
+      - name: Build APK
+        run: flutter build apk --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: KaptanAsistani-APK
+          path: build/app/outputs/flutter-apk/app-release.apk
