@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/maritime_theme.dart';
-import '../main.dart' show nightModeProvider;
+import '../providers/theme_provider.dart';
 import '../services/settings_store.dart';
 import '../widgets/nautical_icons.dart';
 
@@ -204,7 +204,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     Text('Sürüm',
                         style: TextStyle(
                             fontSize: 12, color: MaritimeColors.textMuted)),
-                    Text('1.3.0 Final',
+                    Text('1.3.1',
                         style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
