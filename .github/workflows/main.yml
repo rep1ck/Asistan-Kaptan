@@ -11,6 +11,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Generate launcher source icons
+        run: |
+          pip install pillow -q
+          python tool/gen_icon.py
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -24,6 +33,11 @@ jobs:
 
       - name: Android platform
         run: flutter create . --platforms=android --project-name=kaptan_asistani --org=com.kaptanasistani
+
+      - name: Restore sources after create
+        run: |
+          git checkout HEAD -- lib pubspec.yaml tool 2>/dev/null || true
+          python tool/gen_icon.py
 
       - name: minSdk only
         run: |
@@ -42,6 +56,9 @@ jobs:
           fi
 
       - run: flutter pub get
+
+      - name: Apply Android launcher icons
+        run: dart run flutter_launcher_icons || true
 
       - name: Dart analyze
         run: dart analyze lib || true
