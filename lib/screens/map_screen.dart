@@ -353,13 +353,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   Widget _aisMarker(AisVessel v, LatLng ship, double sog, double? cog) {
     final danger = _isDangerous(v, ship, sog, cog);
     final color = danger ? MaritimeColors.danger : const Color(0xFF4ADE80);
-    return Container(
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: color.withOpacity(0.15),
-        border: Border.all(color: color, width: danger ? 2.5 : 1.5),
-      ),
-      child: Icon(Icons.directions_boat, color: color, size: 26),
+    return ShipTriangleIcon(
+      size: 30,
+      color: color,
+      headingDeg: v.cogDeg,
+      filled: true,
     );
   }
 
@@ -642,18 +640,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 markers: [
                   Marker(
                     point: ship,
-                    width: 48,
-                    height: 48,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: MaritimeColors.cyan.withOpacity(0.15),
-                        border: Border.all(
-                            color: MaritimeColors.cyan, width: 2),
-                      ),
-                      child: const Center(
-                        child: HelmIcon(size: 28, color: MaritimeColors.cyan),
-                      ),
+                    width: 40,
+                    height: 40,
+                    child: ShipTriangleIcon(
+                      size: 36,
+                      color: MaritimeColors.cyan,
+                      headingDeg: cog,
+                      filled: true,
                     ),
                   ),
                   for (var i = 0; i < waypoints.length; i++)
