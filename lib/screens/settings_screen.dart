@@ -49,15 +49,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
     }
     return Scaffold(
-      appBar: AppBar(title: const Text('SHIP SETTINGS')),
+      appBar: AppBar(title: const Text('GEMİ AYARLARI')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _sectionHeader('COMMERCIAL SHIP', Icons.directions_boat),
+          _sectionHeader('TİCARİ GEMİ', Icons.directions_boat),
           const SizedBox(height: 12),
           _sliderCard(
             icon: Icons.speed,
-            label: 'Cruise speed',
+            label: 'Seyir hızı',
             value: cruise,
             min: 6,
             max: 25,
@@ -72,7 +72,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 12),
           _sliderCard(
             icon: Icons.water,
-            label: 'Draft',
+            label: 'Draft (su çekimi)',
             value: draft,
             min: 2,
             max: 20,
@@ -85,11 +85,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
           ),
           const Divider(),
-          _sectionHeader('CPA / TCPA', Icons.warning_amber),
+          _sectionHeader('CPA / TCPA UYARI EŞİKLERİ', Icons.warning_amber),
+          const SizedBox(height: 8),
+          const Text(
+            'AIS açıkken bu değerlerin altındaki yakınlaşmalar kırmızı uyarı verir.',
+            style: TextStyle(fontSize: 12, color: MaritimeColors.textMuted),
+          ),
           const SizedBox(height: 12),
           _sliderCard(
             icon: Icons.social_distance,
-            label: 'CPA',
+            label: 'CPA eşiği',
             value: cpa,
             min: 0.1,
             max: 3.0,
@@ -104,12 +109,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 12),
           _sliderCard(
             icon: Icons.timer,
-            label: 'TCPA',
+            label: 'TCPA eşiği',
             value: tcpa,
             min: 5,
             max: 60,
             divisions: 11,
-            unit: ' min',
+            unit: ' dk',
             format: (v) => v.toStringAsFixed(0),
             onChanged: (v) async {
               setState(() => tcpa = v);
@@ -117,11 +122,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
           ),
           const Divider(),
-          _sectionHeader('AIS (LIVE SHIPS)', Icons.radar),
+          _sectionHeader('AIS (CANLI GEMİLER)', Icons.radar),
           const SizedBox(height: 8),
           const Text(
-            'Free API key from aisstream.io (GitHub login). '
-            'Then enable AIS in Map → Layers menu.',
+            'Ücretsiz API anahtarı: aisstream.io (GitHub ile giriş). '
+            'Sonra Harita → Katmanlar menüsünden AIS\'i açın.',
             style: TextStyle(fontSize: 12, color: MaritimeColors.textMuted),
           ),
           const SizedBox(height: 10),
@@ -130,7 +135,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             obscureText: true,
             style: const TextStyle(color: MaritimeColors.textPrimary),
             decoration: InputDecoration(
-              labelText: 'AIS API key',
+              labelText: 'AIS API anahtarı',
               labelStyle: const TextStyle(color: MaritimeColors.textMuted),
               filled: true,
               fillColor: MaritimeColors.surfaceDark,
@@ -161,10 +166,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Version',
+                      Text('Sürüm',
                           style: TextStyle(
                               fontSize: 12, color: MaritimeColors.textMuted)),
-                      Text('1.0.3 AIS',
+                      Text('1.1.0 CPA/TCPA',
                           style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w700,

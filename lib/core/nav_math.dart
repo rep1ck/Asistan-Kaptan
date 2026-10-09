@@ -41,4 +41,70 @@ class NavMath {
   }
 
   static double msToKn(double ms) => ms < 0 ? 0 : ms * 1.94384;
+
+  /// Convert heading (deg) + speed (kn) to east/north velocity components (kn).
+  static (double ve, double vn) velocityComponents(double cogDeg, double sogKn) {
+    final rad = cogDeg * math.pi / 180;
+    return (sogKn * math.sin(rad), sogKn * math.cos(rad));
+  }
+
+  /// CPA / TCPA between own ship and target.
+  /// Returns null if relative speed is essentially zero.
+  static CpaResult? cpaTcpa({
+    required double ownLat,
+    required double ownLon,
+    required double ownCogDeg,
+    required double ownSogKn,
+    required double tgtLat,
+    required double tgtLon,
+    required double tgtCogDeg,
+    required double tgtSogKn,
+  }) {
+    final meanLat = (ownLat + tgtLat) / 2 * math.pi / 180;
+    final dx = (tgtLon - ownLon) * 60 * math.cos(meanLat);
+    final dy = (tgtLat - ownLat) * 60;
+
+    final (ove, ovn) = velocityComponents(ownCogDeg, ownSogKn);
+    final (tve, tvn) = velocityComponents(tgtCogDeg, tgtSogKn);
+    final rve = tve - ove;
+    final rvn = tvn - ovn;
+
+    final rv2 = rve * rve + rvn * rvn;
+    if (rv2 < 1e-8) {
+      final dist = math.sqrt(dx * dx + dy * dy);
+      return CpaResult(cpaNm: dist, tcpaMin: 0, rangeNm: dist);
+    }
+
+    final tHours = -(dx * rve + dy * rvn) / rv2;
+    final cpaX = dx + rve * tHours;
+    final cpaY = dy + rvn * tHours;
+    final cpa = math.sqrt(cpaX * cpaX + cpaY * cpaY);
+    final dist = math.sqrt(dx * dx + dy * dy);
+
+    return CpaResult(
+      cpaNm: cpa,
+      tcpaMin: tHours * 60,
+      rangeNm: dist,
+    );
+  }
+}
+
+class CpaResult {
+  final double cpaNm;
+  final double tcpaMin;
+  final double rangeNm;
+
+  const CpaResult({
+    required this.cpaNm,
+    required this.tcpaMin,
+    required this.rangeNm,
+  });
+
+  bool isDangerous({required double cpaLimitNm, required double tcpaLimitMin}) {
+    return tcpaMin > 0 &&
+        tcpaMin <= tcpaLimitMin &&
+        cpaNm <= cpaLimitNm;
+  }
+
+  bool get isApproaching => tcpaMin > 0;
 }
