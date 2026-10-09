@@ -28,11 +28,7 @@ class SavedPlan {
       );
 }
 
-enum AisFilterMode {
-  all,
-  near,
-  danger,
-}
+enum AisFilterMode { all, near, danger }
 
 class SettingsStore {
   Future<SharedPreferences> get _p async => SharedPreferences.getInstance();
@@ -83,6 +79,32 @@ class SettingsStore {
   Future<void> setAisRangeNm(double v) async =>
       (await _p).setDouble('ais_range_nm', v);
 
+  Future<bool> getNightMode() async =>
+      (await _p).getBool('night_mode') ?? false;
+  Future<void> setNightMode(bool v) async =>
+      (await _p).setBool('night_mode', v);
+
+  Future<bool> getKeepAwake() async =>
+      (await _p).getBool('keep_awake') ?? true;
+  Future<void> setKeepAwake(bool v) async =>
+      (await _p).setBool('keep_awake', v);
+
+  Future<bool> getRangeRings() async =>
+      (await _p).getBool('range_rings') ?? true;
+  Future<void> setRangeRings(bool v) async =>
+      (await _p).setBool('range_rings', v);
+
+  Future<double> getFuelLPerNm() async =>
+      (await _p).getDouble('fuel_l_per_nm') ?? 20.0;
+  Future<void> setFuelLPerNm(double v) async =>
+      (await _p).setDouble('fuel_l_per_nm', v);
+
+  Future<double> getLoaM() async => (await _p).getDouble('loa_m') ?? 120.0;
+  Future<void> setLoaM(double v) async => (await _p).setDouble('loa_m', v);
+
+  Future<double> getBeamM() async => (await _p).getDouble('beam_m') ?? 20.0;
+  Future<void> setBeamM(double v) async => (await _p).setDouble('beam_m', v);
+
   Future<List<SavedPlan>> getPlans() async {
     final raw = (await _p).getString('saved_plans');
     if (raw == null || raw.isEmpty) return [];
@@ -103,8 +125,7 @@ class SettingsStore {
     while (plans.length > 30) {
       plans.removeLast();
     }
-    final prefs = await _p;
-    await prefs.setString(
+    await (await _p).setString(
       'saved_plans',
       jsonEncode(plans.map((p) => p.toJson()).toList()),
     );
@@ -113,8 +134,7 @@ class SettingsStore {
   Future<void> deletePlan(String name) async {
     final plans = await getPlans();
     plans.removeWhere((p) => p.name == name);
-    final prefs = await _p;
-    await prefs.setString(
+    await (await _p).setString(
       'saved_plans',
       jsonEncode(plans.map((p) => p.toJson()).toList()),
     );
