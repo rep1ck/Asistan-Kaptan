@@ -45,20 +45,17 @@ class _CompassPainter extends CustomPainter {
 
     canvas.drawCircle(Offset(cx, cy), r, circlePaint);
 
-    // Iç daire
     final innerPaint = Paint()
       ..color = color.withOpacity(0.3)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1;
     canvas.drawCircle(Offset(cx, cy), r * 0.65, innerPaint);
 
-    // Pusula çizgileri (kuzey-güney)
     final linePaint = Paint()
       ..color = color
       ..strokeWidth = size.width * 0.03
       ..strokeCap = StrokeCap.round;
 
-    // Kuzey ibresi (turuncu)
     final northPaint = Paint()
       ..color = accent
       ..strokeWidth = size.width * 0.04
@@ -67,18 +64,15 @@ class _CompassPainter extends CustomPainter {
     canvas.drawLine(Offset(cx, cy - r * 0.7), Offset(cx, cy), northPaint);
     canvas.drawLine(Offset(cx, cy), Offset(cx, cy + r * 0.7), linePaint);
 
-    // Doğu-batı çizgisi
     final sidePaint = Paint()
       ..color = color.withOpacity(0.5)
       ..strokeWidth = size.width * 0.025
       ..strokeCap = StrokeCap.round;
     canvas.drawLine(Offset(cx - r * 0.7, cy), Offset(cx + r * 0.7, cy), sidePaint);
 
-    // Merkez nokta
     final dotPaint = Paint()..color = accent;
     canvas.drawCircle(Offset(cx, cy), size.width * 0.045, dotPaint);
 
-    // Yön harfleri
     final textStyle = TextStyle(
       color: color,
       fontSize: size.width * 0.12,
@@ -100,7 +94,7 @@ class _CompassPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-/// Çapa ikonu - denizcilik demirleme sembolu
+/// Çapa ikonu
 class AnchorIcon extends StatelessWidget {
   final double size;
   final Color color;
@@ -135,28 +129,24 @@ class _AnchorPainter extends CustomPainter {
       ..strokeWidth = size.width * 0.05
       ..strokeCap = StrokeCap.round;
 
-    // Üst halka
     final ringPaint = Paint()
       ..color = color
       ..style = PaintingStyle.stroke
       ..strokeWidth = size.width * 0.04;
     canvas.drawCircle(Offset(cx, size.height * 0.15), size.width * 0.09, ringPaint);
 
-    // Dikey gövde
     canvas.drawLine(
       Offset(cx, size.height * 0.24),
       Offset(cx, size.height * 0.82),
       paint,
     );
 
-    // Yatay çubuk (stock)
     canvas.drawLine(
       Offset(cx - size.width * 0.28, size.height * 0.32),
       Offset(cx + size.width * 0.28, size.height * 0.32),
       paint,
     );
 
-    // Alt kanca (sol)
     final arcPaint = Paint()
       ..color = color
       ..style = PaintingStyle.stroke
@@ -169,7 +159,6 @@ class _AnchorPainter extends CustomPainter {
     final rightArc = Rect.fromCircle(center: Offset(cx + size.width * 0.18, size.height * 0.72), radius: size.width * 0.18);
     canvas.drawArc(rightArc, 0, 3.14, false, arcPaint);
 
-    // Kanca uçları
     canvas.drawLine(
       Offset(cx - size.width * 0.36, size.height * 0.72),
       Offset(cx - size.width * 0.36, size.height * 0.64),
@@ -186,7 +175,7 @@ class _AnchorPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-/// Dümen (helm) ikonu - gemi dümen sembolu
+/// Dümen (helm) ikonu
 class HelmIcon extends StatelessWidget {
   final double size;
   final Color color;
@@ -221,14 +210,12 @@ class _HelmPainter extends CustomPainter {
     final cy = size.height / 2;
     final r = size.width * 0.42;
 
-    // Dış halka
     final ringPaint = Paint()
       ..color = color
       ..style = PaintingStyle.stroke
       ..strokeWidth = size.width * 0.035;
     canvas.drawCircle(Offset(cx, cy), r, ringPaint);
 
-    // İç daire (dümen merkezi)
     final hubPaint = Paint()
       ..color = accent
       ..style = PaintingStyle.fill;
@@ -240,7 +227,6 @@ class _HelmPainter extends CustomPainter {
       ..strokeWidth = size.width * 0.02;
     canvas.drawCircle(Offset(cx, cy), size.width * 0.10, hubRing);
 
-    // 6 tutamak (kollar)
     final spokePaint = Paint()
       ..color = color
       ..strokeWidth = size.width * 0.035
@@ -257,7 +243,6 @@ class _HelmPainter extends CustomPainter {
       final y2 = cy + outer * math.sin(angle);
       canvas.drawLine(Offset(x1, y1), Offset(x2, y2), spokePaint);
 
-      // Tutamak uçlarında küçük yuvarlak
       final knobPaint = Paint()..color = color;
       canvas.drawCircle(Offset(x2, y2), size.width * 0.025, knobPaint);
     }
@@ -265,4 +250,77 @@ class _HelmPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// Gemi / AIS işareti — COG yönünde dönen ok ucu (üçgen).
+/// [headingDeg] null ise kuzeye bakar.
+class ShipTriangleIcon extends StatelessWidget {
+  final double size;
+  final Color color;
+  final double? headingDeg;
+  final bool filled;
+
+  const ShipTriangleIcon({
+    super.key,
+    this.size = 28,
+    this.color = const Color(0xFF2DD4DF),
+    this.headingDeg,
+    this.filled = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final angle = ((headingDeg ?? 0) * math.pi / 180);
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Transform.rotate(
+        angle: angle,
+        child: CustomPaint(
+          painter: _ShipTrianglePainter(color, filled),
+        ),
+      ),
+    );
+  }
+}
+
+class _ShipTrianglePainter extends CustomPainter {
+  final Color color;
+  final bool filled;
+
+  _ShipTrianglePainter(this.color, this.filled);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+    // Ok ucu: üstte sivri (pruva), altta geniş taban (kıç)
+    final path = Path()
+      ..moveTo(w * 0.5, h * 0.06)
+      ..lineTo(w * 0.92, h * 0.92)
+      ..lineTo(w * 0.5, h * 0.72)
+      ..lineTo(w * 0.08, h * 0.92)
+      ..close();
+
+    if (filled) {
+      final fill = Paint()
+        ..color = color.withOpacity(0.85)
+        ..style = PaintingStyle.fill;
+      canvas.drawPath(path, fill);
+    }
+
+    final stroke = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = math.max(1.5, w * 0.06)
+      ..strokeJoin = StrokeJoin.round;
+    canvas.drawPath(path, stroke);
+
+    final tip = Paint()..color = color;
+    canvas.drawCircle(Offset(w * 0.5, h * 0.08), w * 0.04, tip);
+  }
+
+  @override
+  bool shouldRepaint(covariant _ShipTrianglePainter old) =>
+      old.color != color || old.filled != filled;
 }
