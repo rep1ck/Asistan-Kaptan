@@ -9,7 +9,19 @@ class AisVessel {
   final double lon;
   final double? sogKn;
   final double? cogDeg;
+  final double? headingDeg;
+  final int? navStatus;
   final DateTime updated;
+
+  // Static / voyage (AIS type 5)
+  final int? imo;
+  final String? callSign;
+  final int? shipType;
+  final double? draughtM;
+  final String? destination;
+  final String? etaText;
+  final double? loaM;
+  final double? beamM;
 
   AisVessel({
     required this.mmsi,
@@ -18,8 +30,98 @@ class AisVessel {
     required this.lon,
     this.sogKn,
     this.cogDeg,
+    this.headingDeg,
+    this.navStatus,
     required this.updated,
+    this.imo,
+    this.callSign,
+    this.shipType,
+    this.draughtM,
+    this.destination,
+    this.etaText,
+    this.loaM,
+    this.beamM,
   });
+
+  AisVessel copyWith({
+    String? name,
+    double? lat,
+    double? lon,
+    double? sogKn,
+    double? cogDeg,
+    double? headingDeg,
+    int? navStatus,
+    DateTime? updated,
+    int? imo,
+    String? callSign,
+    int? shipType,
+    double? draughtM,
+    String? destination,
+    String? etaText,
+    double? loaM,
+    double? beamM,
+  }) {
+    return AisVessel(
+      mmsi: mmsi,
+      name: name ?? this.name,
+      lat: lat ?? this.lat,
+      lon: lon ?? this.lon,
+      sogKn: sogKn ?? this.sogKn,
+      cogDeg: cogDeg ?? this.cogDeg,
+      headingDeg: headingDeg ?? this.headingDeg,
+      navStatus: navStatus ?? this.navStatus,
+      updated: updated ?? this.updated,
+      imo: imo ?? this.imo,
+      callSign: callSign ?? this.callSign,
+      shipType: shipType ?? this.shipType,
+      draughtM: draughtM ?? this.draughtM,
+      destination: destination ?? this.destination,
+      etaText: etaText ?? this.etaText,
+      loaM: loaM ?? this.loaM,
+      beamM: beamM ?? this.beamM,
+    );
+  }
+
+  static String navStatusLabel(int? s) {
+    switch (s) {
+      case 0:
+        return 'Motorla seyir';
+      case 1:
+        return 'Demirde';
+      case 2:
+        return 'Sürüntüde (kontrollü)';
+      case 3:
+        return 'Kısıtlı manevra';
+      case 4:
+        return 'Kısıtlı draft';
+      case 5:
+        return 'Bağlı';
+      case 6:
+        return 'Karaya oturmuş';
+      case 7:
+        return 'Balıkçılık';
+      case 8:
+        return 'Yelkenle seyir';
+      case 14:
+        return 'AIS-SART';
+      case 15:
+        return 'Tanımsız';
+      default:
+        return s == null ? '—' : 'Kod $s';
+    }
+  }
+
+  static String shipTypeLabel(int? t) {
+    if (t == null) return '—';
+    if (t >= 70 && t <= 79) return 'Kargo';
+    if (t >= 80 && t <= 89) return 'Tanker';
+    if (t >= 60 && t <= 69) return 'Yolcu';
+    if (t >= 40 && t <= 49) return 'Yüksek hızlı';
+    if (t >= 30 && t <= 39) return 'Balıkçı';
+    if (t >= 50 && t <= 59) return 'Özel / destek';
+    if (t == 36 || t == 37) return 'Yat / eğlence';
+    return 'Tip $t';
+  }
 }
 
 enum AisConnectionState { idle, connecting, connected, error }
@@ -29,7 +131,7 @@ class AisService {
   WebSocketChannel? _ch;
   final _ctrl = StreamController<Map<int, AisVessel>>.broadcast();
   final Map<int, AisVessel> _vessels = {};
-  final Map<int, String> _names = {};
+  final Map<int, _StaticCache> _static = {};
   Timer? _prune;
   String? _lastError;
   AisConnectionState state = AisConnectionState.idle;
@@ -43,7 +145,6 @@ class AisService {
     required String apiKey,
     required double lat,
     required double lon,
-    /// ~2° ≈ 120 NM — sparse regions (inland / open sea)
     double deltaDeg = 2.0,
   }) async {
     await stop();
@@ -80,6 +181,7 @@ class AisService {
           'StandardClassBPositionReport',
           'ExtendedClassBPositionReport',
           'ShipStaticData',
+          'StaticDataReport',
         ],
       });
       _ch!.sink.add(sub);
@@ -99,7 +201,6 @@ class AisService {
               _lastError = null;
               return;
             }
-
             if (type.toLowerCase().contains('error')) {
               _lastError =
                   text.length > 120 ? '${text.substring(0, 120)}…' : text;
@@ -109,21 +210,15 @@ class AisService {
 
             final meta = data['MetaData'] as Map<String, dynamic>? ?? {};
             final msgRoot = data['Message'] as Map<String, dynamic>? ?? {};
-            final body = (msgRoot[type] as Map<String, dynamic>?) ??
-                (msgRoot['PositionReport'] as Map<String, dynamic>?) ??
-                (msgRoot['ShipStaticData'] as Map<String, dynamic>?) ??
-                {};
+            final body = (msgRoot[type] as Map<String, dynamic>?) ?? {};
 
             final mmsi = _asInt(meta['MMSI']) ??
                 _asInt(meta['MMSI_String']) ??
                 _asInt(body['UserID']);
             if (mmsi == null) return;
 
-            if (type == 'ShipStaticData') {
-              final n = (body['Name'] as String?)?.trim() ??
-                  (meta['ShipName'] as String?)?.trim() ??
-                  '';
-              if (n.isNotEmpty) _names[mmsi] = n;
+            if (type == 'ShipStaticData' || type == 'StaticDataReport') {
+              _ingestStatic(mmsi, meta, body, type);
               return;
             }
 
@@ -137,20 +232,37 @@ class AisService {
             if (vLat < -90 || vLat > 90 || vLon < -180 || vLon > 180) return;
 
             final nameMeta = (meta['ShipName'] as String?)?.trim() ?? '';
+            final st = _static[mmsi];
             final name = nameMeta.isNotEmpty
                 ? nameMeta
-                : (_names[mmsi] ?? 'MMSI $mmsi');
+                : (st?.name ?? (_vessels[mmsi]?.name ?? 'MMSI $mmsi'));
+
             final sog = _asDouble(body['Sog']);
             final cog = _asDouble(body['Cog']);
+            final hdg = _asDouble(body['TrueHeading']);
+            final nav = _asInt(body['NavigationalStatus']);
 
+            final prev = _vessels[mmsi];
             _vessels[mmsi] = AisVessel(
               mmsi: mmsi,
               name: name,
               lat: vLat,
               lon: vLon,
-              sogKn: sog != null && sog >= 0 && sog < 102.3 ? sog : null,
-              cogDeg: cog != null && cog >= 0 && cog < 360 ? cog : null,
+              sogKn: sog != null && sog >= 0 && sog < 102.3 ? sog : prev?.sogKn,
+              cogDeg: cog != null && cog >= 0 && cog < 360 ? cog : prev?.cogDeg,
+              headingDeg: hdg != null && hdg >= 0 && hdg < 360
+                  ? hdg
+                  : prev?.headingDeg,
+              navStatus: nav ?? prev?.navStatus,
               updated: DateTime.now(),
+              imo: st?.imo ?? prev?.imo,
+              callSign: st?.callSign ?? prev?.callSign,
+              shipType: st?.shipType ?? prev?.shipType,
+              draughtM: st?.draughtM ?? prev?.draughtM,
+              destination: st?.destination ?? prev?.destination,
+              etaText: st?.etaText ?? prev?.etaText,
+              loaM: st?.loaM ?? prev?.loaM,
+              beamM: st?.beamM ?? prev?.beamM,
             );
             if (!_ctrl.isClosed) _ctrl.add(snapshot);
           } catch (_) {}
@@ -179,6 +291,81 @@ class AisService {
       state = AisConnectionState.error;
       return false;
     }
+  }
+
+  void _ingestStatic(int mmsi, Map<String, dynamic> meta,
+      Map<String, dynamic> body, String type) {
+    final name = _cleanStr(body['Name']) ?? _cleanStr(meta['ShipName']);
+    final call = _cleanStr(body['CallSign']);
+    final imo = _asInt(body['ImoNumber']);
+    final shipType = _asInt(body['Type']) ?? _asInt(body['ShipType']);
+    final draught = _asDouble(body['MaximumStaticDraught']);
+    final dest = _cleanStr(body['Destination']);
+
+    String? etaText;
+    final eta = body['Eta'];
+    if (eta is Map) {
+      final mo = _asInt(eta['Month']);
+      final dy = _asInt(eta['Day']);
+      final hr = _asInt(eta['Hour']);
+      final mi = _asInt(eta['Minute']);
+      if (mo != null && mo >= 1 && mo <= 12 && dy != null && dy >= 1) {
+        final h = (hr == null || hr > 23) ? 0 : hr;
+        final m = (mi == null || mi > 59) ? 0 : mi;
+        etaText =
+            '${mo.toString().padLeft(2, '0')}/${dy.toString().padLeft(2, '0')} '
+            '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')} UTC';
+      }
+    }
+
+    double? loa;
+    double? beam;
+    final dim = body['Dimension'];
+    if (dim is Map) {
+      final a = _asDouble(dim['A']) ?? 0;
+      final b = _asDouble(dim['B']) ?? 0;
+      final c = _asDouble(dim['C']) ?? 0;
+      final d = _asDouble(dim['D']) ?? 0;
+      if (a + b > 0) loa = a + b;
+      if (c + d > 0) beam = c + d;
+    }
+
+    final cache = _StaticCache(
+      name: name,
+      callSign: call,
+      imo: (imo != null && imo > 0) ? imo : null,
+      shipType: shipType,
+      draughtM:
+          (draught != null && draught > 0 && draught < 30) ? draught : null,
+      destination: dest,
+      etaText: etaText,
+      loaM: loa,
+      beamM: beam,
+    );
+    _static[mmsi] = cache;
+
+    final prev = _vessels[mmsi];
+    if (prev != null) {
+      _vessels[mmsi] = prev.copyWith(
+        name: (name != null && name.isNotEmpty) ? name : null,
+        imo: cache.imo,
+        callSign: cache.callSign,
+        shipType: cache.shipType,
+        draughtM: cache.draughtM,
+        destination: cache.destination,
+        etaText: cache.etaText,
+        loaM: cache.loaM,
+        beamM: cache.beamM,
+      );
+      if (!_ctrl.isClosed) _ctrl.add(snapshot);
+    }
+  }
+
+  String? _cleanStr(dynamic v) {
+    if (v is! String) return null;
+    final s = v.trim();
+    if (s.isEmpty || s.replaceAll('@', '').trim().isEmpty) return null;
+    return s;
   }
 
   String? _asText(dynamic raw) {
@@ -219,6 +406,7 @@ class AisService {
     } catch (_) {}
     _ch = null;
     _vessels.clear();
+    _static.clear();
     state = AisConnectionState.idle;
     if (!_ctrl.isClosed) _ctrl.add({});
   }
@@ -227,4 +415,28 @@ class AisService {
     stop();
     _ctrl.close();
   }
+}
+
+class _StaticCache {
+  final String? name;
+  final String? callSign;
+  final int? imo;
+  final int? shipType;
+  final double? draughtM;
+  final String? destination;
+  final String? etaText;
+  final double? loaM;
+  final double? beamM;
+
+  _StaticCache({
+    this.name,
+    this.callSign,
+    this.imo,
+    this.shipType,
+    this.draughtM,
+    this.destination,
+    this.etaText,
+    this.loaM,
+    this.beamM,
+  });
 }
